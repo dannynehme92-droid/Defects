@@ -702,20 +702,34 @@ const AS46541 = {n:'AS 4654.1',t:'Waterproofing membranes for external above-gro
 const AS46542 = {n:'AS 4654.2',t:'Waterproofing membranes for external above-ground use '+D+' Design and installation',ed:{'2022':'2012','2019':'2012','2016':'2012'}};
 const AS1288 = {n:'AS 1288',t:'Glass in buildings '+D+' Selection and installation',ed:{'2022':'2021','2019':'2006'}};
 const WET_NCC = {
-  '2022':{v1:'Performance Requirement F2P2 (Wet areas); Deemed-to-Satisfy Provisions F2D2 (Wet area construction) and Specification 26 (S26C3 to S26C6, as applicable)',
+  '2022':{v1:{t:'Performance Requirement F2P2 (Wet areas); Deemed-to-Satisfy Provisions F2D2 (Wet area construction) and Specification 26 (S26C3 to S26C6, as applicable)',r:'F2D2 requires building elements in the wet areas of Class 2 and 3 buildings (and Class 4 parts) to be water resistant or waterproof as set out in Specification 26, and to comply with AS 3740.'},
           v2:'Performance Requirement H4P1 (Wet areas); Deemed-to-Satisfy Provisions H4D2 and H4D3; ABCB Housing Provisions Part 10.2 (Wet area waterproofing)'},
   '2019':{v1:'Performance Requirement FP1.7 (Wet areas); F1.7 (Wet area construction) and Table F1.7',
           v2:'Performance Requirement P2.4.1 (Wet areas); Part 3.8.1, clause 3.8.1.2 (Wet areas) and Table 3.8.1.1'},
   '2016':{v2:'Performance Requirement P2.4.1 (Wet areas); Part 3.8.1 and Table 3.8.1.1'}
 };
-function wet(id,name,cl,scope){
-  return {id:id,name:name,fb:'wet area waterproofing and weatherproofing (health and amenity provisions)',ncc:WET_NCC,
+function wet(id,name,cl,scope,ov){
+  const ncc = JSON.parse(JSON.stringify(WET_NCC));
+  if(ov) ncc['2022'].v1 = ov;
+  return {id:id,name:name,fb:'wet area waterproofing and weatherproofing (health and amenity provisions)',ncc:ncc,
     std:[Object.assign({},AS3740,{cl:cl?{'2022':cl}:{}})],scope:scope};
 }
 const WET_SCOPE_END = ['Flood test and record the result before covering.','Re-lay finishes and reseal junctions.','Provide written certification of the waterproofing work on completion.','Extent of works: [CONFIRM EXTENT].'];
 const LIB = [
   wet('wet','Waterproofing: bathrooms, laundries and wet areas (general)',null,
     ['Remove affected tiles, bedding and screed as required to expose the substrate and membrane.','Repair the substrate and install a compliant waterproofing system, including flashings, upstands, bond breakers and floor waste connections, in accordance with the standard and the membrane manufacturer\'s specification.'].concat(WET_SCOPE_END)),
+  wet('wetshower','Wet areas: shower floor, walls and junctions',null,
+    ['Remove finishes within the shower area to expose the substrate and membrane.','Reinstate the membrane so the floor (including any hob or step-down) is waterproof, the walls are waterproof to the required height, and all wall junctions, wall/floor junctions and penetrations are sealed.'].concat(WET_SCOPE_END),
+    {t:'Specification 26, S26C3 (Shower area, enclosed and unenclosed), applied through F2D2 and Performance Requirement F2P2',r:'S26C3 requires the floor of a shower area, including any hob or step-down, to be waterproof, and the walls to be waterproof to not less than 1800 mm above the floor substrate. Wall junctions and joints, wall/floor junctions and penetrations within the shower area must also be waterproof.'}),
+  wet('wetoutside','Wet areas: bathroom floor outside the shower',null,
+    ['Remove floor finishes outside the shower area as required.','Install the required water-resistant or waterproof floor treatment for the floor type, with waterproofed wall/floor junctions, then reinstate finishes.'].concat(WET_SCOPE_END),
+    {t:'Specification 26, S26C4 (Area outside shower area), applied through F2D2 and Performance Requirement F2P2',r:'S26C4 sets the treatment of floors outside the shower area by floor type: concrete and fibre-cement (including compressed fibre cement) floors must be water resistant, and timber-based floors must be waterproof. The wall/floor junction must be waterproof.'}),
+  wet('wetbath','Wet areas: around baths and spas',null,
+    ['Remove finishes around the bath or spa to expose the substrate.','Install the required waterproofing or water-resistant treatment to the floor, walls, junctions and tap and spout penetrations, including any waterstop under the vessel lip, then reinstate finishes.'].concat(WET_SCOPE_END),
+    {t:'Specification 26, S26C5 (Areas adjacent to baths and spas without showers), applied through F2D2 and Performance Requirement F2P2',r:'For baths and spas not installed with a shower, S26C5 treats concrete and fibre-cement floors as water resistant and timber-based floors as waterproof. Walls adjoining the vessel must be water resistant, and for a non-freestanding bath or spa the wall must be waterproof to not less than 150 mm above the lip, with any shelf adjoining it waterproof and a waterstop under the vessel lip. Tap and spout penetrations in horizontal surfaces must be waterproof.'}),
+  wet('wetother','Wet areas: laundries, WCs and around basins and tubs',null,
+    ['Remove finishes in the affected area as required.','Install the required water-resistant or waterproof floor, wall/floor junction and penetration treatment, then reinstate finishes.'].concat(WET_SCOPE_END),
+    {t:'Specification 26, S26C6 (Other areas), applied through F2D2 and Performance Requirement F2P2',r:'S26C6 requires walls adjoining basins, sinks or laundry tubs to be water resistant to not less than 150 mm above the vessel where it is within 75 mm of the wall, wall junctions at fixed vessels to be waterproof, and tap and spout penetrations to be waterproof. Laundry and WC floors and wall/floor junctions must be water resistant, and the whole floor and its junctions must be waterproof where F2D4 requires a floor waste. In a WC with a handheld bidet spray the floor must be waterproof, with walls within a 1500 mm radius waterproof to 150 mm above the floor substrate and water resistant to 1200 mm above the finished floor.'}),
   wet('wetfalls','Wet areas: falls and ponding','clauses 2.3.3 and 2.3.4 (falls in wet area floor finishes)',
     ['Remove floor finishes and bedding as required.','Correct the falls to the floor waste so water does not pond, and confirm membrane continuity.'].concat(WET_SCOPE_END)),
   wet('wetterm','Wet areas: membrane termination at showers (waterstops and hobs)','clauses 4.6.1 and 4.6.2 (termination of membranes at shower recess waterstops and at showers with hobs)',
@@ -724,16 +738,24 @@ const LIB = [
     ['Remove finishes at the affected junctions and movement joints.','Install compliant fillets and bond breakers (where a bonded membrane is used) and reinstate the membrane over them.'].concat(WET_SCOPE_END)),
   wet('wetpen','Wet areas: penetrations (taps, wastes, outlets)','clause 4.12 (penetrations, including 4.12.1 for shower areas and 4.12.3 for other penetrations in Category 1 areas)',
     ['Remove finishes around the affected penetrations.','Seal or waterproof each penetration with compliant flanges, collars or sealing details integrated with the membrane.'].concat(WET_SCOPE_END)),
-  {id:'extwp',name:'Waterproofing: balconies, terraces, podiums and roofs (external)',fb:'weatherproofing and external above-ground waterproofing',
-   ncc:{'2022':{v1:'Performance Requirement F1P2 (Preventing rainwater from entering buildings); Deemed-to-Satisfy Provisions F1D4 (Exposed joints) and F1D5 (external waterproofing membranes)',v2:'Deemed-to-Satisfy Provisions H2D8 (external waterproofing)'},
+  {id:'extwp',name:'Waterproofing: balconies, terraces, podiums and roofs (external, general)',fb:'weatherproofing and external above-ground waterproofing',
+   ncc:{'2022':{v1:{t:'Performance Requirement F1P2 (Preventing rainwater from entering buildings); Deemed-to-Satisfy Provisions F1D4 (Exposed joints) and F1D5 (external waterproofing membranes)',r:'F1D5 requires a roof, balcony, podium or similar horizontal surface to have a waterproofing membrane complying with AS 4654.1 and AS 4654.2. F1D2 excludes balconies and similar surfaces with timber decking or other perforated flooring, and those directly above ground. F1D4 requires exposed joints in the drainage surface to be protected in accordance with Section 2.9 of AS 4654.2, and not located beneath or run through planter boxes or water features.'},v2:'Deemed-to-Satisfy Provisions H2D8 (external waterproofing)'},
         '2019':{v1:'Performance Requirement FP1.2 (Preventing rainwater from entering buildings); F1.4 (waterproofing membranes for external above-ground use)',v2:'Performance Requirement P2.2.2 (external waterproofing); Part 3.8.1, clause 3.8.1.3 (External above ground membranes)'},
         '2016':{v2:'Performance Requirement P2.2.2 (external waterproofing); Part 3.8.1 (external above ground membranes)'}},
    std:[AS46541,AS46542],
    scope:['Remove finishes and failed membrane as required to expose the substrate.','Correct substrate, falls and drainage so water does not pond.','Install a compliant membrane system with correct upturns, flashings and penetration details, in accordance with the standard and the manufacturer\'s specification.','Carry out a ponding or flood test and record the result before reinstating finishes.','Reinstate finishes and provide written certification and warranty documents.','Extent of works: [CONFIRM EXTENT].']},
   {id:'roofdrain',name:'Roof drainage, gutters, downpipes and ponding',fb:'stormwater drainage and weatherproofing',
-   ncc:{'2022':{v1:'Performance Requirement F1P3 (Rainwater drainage systems); Deemed-to-Satisfy Provision F1D3 (Stormwater drainage)'},'2019':{v1:'Performance Requirement FP1.3 (Rainwater drainage systems); F1.1 (Stormwater drainage)'}},
+   ncc:{'2022':{v1:{t:'Performance Requirement F1P3 (Rainwater drainage systems); Deemed-to-Satisfy Provision F1D3 (Stormwater drainage)',r:'F1D3 requires stormwater drainage to be designed and constructed in accordance with AS/NZS 3500.3. F1P3 requires a drainage system that disposes of surface water from a 5% annual exceedance probability storm (1 in 20 year) without damage or nuisance to other property, and that keeps surface water from a 1% storm (1 in 100 year) out of the building.'}},'2019':{v1:'Performance Requirement FP1.3 (Rainwater drainage systems); F1.1 (Stormwater drainage)'}},
    std:[{n:'AS/NZS 3500.3',t:'Plumbing and drainage '+D+' Stormwater drainage'}],
    scope:['Clear, repair or replace gutters, sumps and downpipes as required.','Correct falls and outlet capacity, and provide overflow paths where required.','Confirm connection to the approved stormwater system and test.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'dpc',name:'Rising damp and damp-proof courses',fb:'rising damp provisions',
+   ncc:{'2022':{v1:{t:'Performance Requirement F1P4 (Rising damp); Deemed-to-Satisfy Provision F1D6 (damp-proofing)',r:'F1P4 requires moisture from the ground to be prevented from damaging building elements or causing unhealthy conditions. F1D6 requires damp to be prevented from reaching the building elements it lists, and refers to AS/NZS 2904 and AS 3660.1 for damp-proof course materials and installation.'}}},
+   std:[{n:'AS/NZS 2904',t:'Damp-proof courses and flashings'},{n:'AS 3660.1',t:'Termite management '+D+' New building work'}],
+   scope:['Investigate the source of moisture and the condition of the damp-proof course and adjoining finishes.','Install or repair a compliant damp-proof course or barrier, correct ground levels and drainage, and reinstate finishes.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'subfloor',name:'Subfloor ventilation and ground moisture',fb:'damp and subfloor provisions',
+   ncc:{'2022':{v1:{t:'Deemed-to-Satisfy Provisions F1D7 (floors on the ground) and F1D8 (subfloor ventilation, Table F1D8)',r:'F1D7 covers floors resting on the ground and refers to AS 2870 for vapour barriers. F1D8 sets minimum subfloor ventilation openings and ground clearance by climatic zone in Table F1D8, with extra requirements where the subfloor is excessively damp.'}}},
+   std:[{n:'AS 2870',t:'Residential slabs and footings'}],
+   scope:['Provide the required ventilation openings and ground clearance, and remove obstructions to airflow.','Install or repair the vapour barrier and drainage, and treat or replace damaged timber.','Extent of works: [CONFIRM EXTENT].']},
   {id:'roofcl',name:'Roof cladding, flashings and penetrations',fb:'weatherproofing of roofs',
    ncc:{'2022':{v1:{t:'Part F3 (Roof and wall cladding)',c:true}}},
    std:[{n:'AS 1562.1',t:'Design and installation of sheet roof and wall cladding '+D+' Metal'},{n:'AS 2050',t:'Installation of roof tiles'}],
@@ -759,7 +781,7 @@ const LIB = [
    std:[{n:'AS 1905.1',t:'Components for the protection of openings in fire-resistant walls '+D+' Fire-resistant doorsets'},{n:'AS 1851',t:'Routine service of fire protection systems and equipment'}],
    scope:['Repair or replace the door, frame, hardware, seals and closer so the doorset is self-closing and latching and matches its tested system.','Provide certification for the replaced or repaired doorset.','Extent of works: [CONFIRM EXTENT].']},
   {id:'firestop',name:'Fire stopping and service penetrations',fb:'fire resistance and compartmentation (Section C)',
-   ncc:{'2022':{v1:'Deemed-to-Satisfy Provision C4D15 (Openings for service installations) and Specification 13 (Penetration of walls, floors and ceilings by services), including S13C7 (Fire-stopping) where applicable'},
+   ncc:{'2022':{v1:{t:'Deemed-to-Satisfy Provision C4D15 (Openings for service installations) and Specification 13 (Penetration of walls, floors and ceilings by services), including S13C7 (Fire-stopping) where applicable',r:'C4D15 requires service penetrations through elements with a fire-resistance level to be protected, either by a system shown by test to meet C4D15(2)(a) or by the permitted alternatives, such as the metal pipe, sanitary plumbing, cable and electrical outlet methods in Specification 13. Specification 13 prescribes the materials and installation for those alternatives, including fire-stopping to S13C7.'}},
         '2019':{v1:'C3.15 (Openings for service installations) and Specification C3.15'}},
    std:[{n:'AS 4072.1',t:'Components for the protection of openings in fire-resistant separating elements '+D+' Service penetrations and control joints'}],
    scope:['Install fire-stopping systems that match a tested and certified system for each penetration and joint.','Label penetrations and keep a record of the systems used.','Provide installer certification.','Extent of works: [CONFIRM EXTENT].']},
@@ -778,7 +800,7 @@ const LIB = [
    std:[{n:'AS 3786',t:'Smoke alarms using scattered light, transmitted light or ionization'},{n:'AS 1670.1',t:'Fire detection, warning, control and intercom systems '+D+' System design, installation and commissioning '+D+' Fire'}],
    scope:['Install or replace compliant smoke alarms in the required locations, interconnected where required.','Test each alarm and record the results.','Extent of works: [CONFIRM EXTENT].']},
   {id:'egress',name:'Egress, stairs, balustrades and handrails',fb:'access and egress provisions',
-   ncc:{'2022':{v1:'Deemed-to-Satisfy Provisions D3D17 to D3D21 (barriers, including D3D18 for barrier height) and D3D22 (handrails)',v2:'ABCB Housing Provisions 11.3.3 (barriers), 11.3.4 (barrier construction) and 11.3.5 (handrails)'},
+   ncc:{'2022':{v1:{t:'Deemed-to-Satisfy Provisions D3D17 to D3D21 (barriers, including D3D18 for barrier height) and D3D22 (handrails)',r:'D3D18 sets the minimum barrier height, which is 1 m for locations such as balconies. D3D19 limits the opening between a face-mounted balustrade and the edge of the trafficable surface to 40 mm.'},v2:'ABCB Housing Provisions 11.3.3 (barriers), 11.3.4 (barrier construction) and 11.3.5 (handrails)'},
         '2019':{v1:'D2.16 (barriers) and D2.17 (handrails)',v2:'Part 3.9.2, clauses 3.9.2.3 (barriers) and 3.9.2.4 (handrails)'}},
    std:[{n:'AS/NZS 1170.1',t:'Structural design actions '+D+' Permanent, imposed and other actions'},{n:'AS 1428.1',t:'Design for access and mobility '+D+' General requirements for access '+D+' New building work'}],
    scope:['Modify or replace treads, risers, balustrades, handrails or fixings so dimensions, openings and loads meet the requirements.','Obtain engineer certification of the replacement balustrade or fixings where required.','Extent of works: [CONFIRM EXTENT].']},
@@ -814,6 +836,27 @@ const LIB = [
   {id:'other',name:'Other defect (blank template)',fb:'[CONFIRM PROVISION]',std:[],
    scope:['[DESCRIBE RECTIFICATION WORKS].','Extent of works: [CONFIRM EXTENT].']}
 ];
+
+function ext(id,name,cl,scope,fbText){
+  const base = LIB.find(x=>x.id==='extwp');
+  const n = JSON.parse(JSON.stringify(base.ncc));
+  const std = [Object.assign({},AS46541), Object.assign({},AS46542,{cl:{'2022':cl,'2019':cl,'2016':cl}})];
+  return {id:id,name:name,fb:fbText||base.fb,ncc:n,std:std,scope:scope};
+}
+(function(){
+  const END = ['Carry out a ponding or flood test and record the result before reinstating finishes.','Reinstate finishes and provide written certification and warranty documents.','Extent of works: [CONFIRM EXTENT].'];
+  const i = LIB.findIndex(x=>x.id==='extwp');
+  const adds = [
+    ext('extfalls','External waterproofing: falls and ponding','clause 2.5.2 (falls)',['Remove finishes as required and correct the substrate and falls so water drains to outlets and does not pond.','Reinstall the membrane system to suit the corrected falls.'].concat(END)),
+    ext('extterm','External waterproofing: upstands and terminations','clause 2.8 (termination of membranes), including 2.8.1.1 (height), 2.8.1.2 (anchoring) and 2.8.1.3 (finishing of upward terminations)',['Expose the membrane termination at the affected upstand, wall or parapet.','Reinstate the termination to the required height with correct anchoring and finishing so water cannot get behind it.'].concat(END)),
+    ext('extdoor','External waterproofing: doors and windows opening onto waterproofed areas','clause 2.8.3 (doors and windows onto external waterproofed areas)',['Expose the membrane at the door or window threshold.','Reinstate the membrane termination and flashing at the opening so water cannot enter under the door or window frame.'].concat(END)),
+    ext('extpen','External waterproofing: penetrations','clause 2.8.4 (penetrations)',['Expose the membrane around the affected penetrations.','Reinstate each penetration with a compliant collar or flashing integrated with the membrane.'].concat(END)),
+    ext('extjoint','External waterproofing: movement and control joints','clause 2.9 (movement and control joints)',['Expose the affected joint and its membrane.','Reinstate the joint with a compliant system, including any hob or discontinuous membrane the design requires.'].concat(END)),
+    ext('extdrain','External waterproofing: drains and overflows','clauses 2.10 (drains) and 2.11 (overflows)',['Expose the membrane at the affected drain or overflow.','Reinstate drain and overflow connections so the membrane is continuous and water drains freely.'].concat(END)),
+    ext('extlap','External waterproofing: laps, seams, fillets and curing','clauses 2.6.1 (junctions, lap joints, seams and cold joints), 2.6.2 (curing) and 2.7 (fillets)',['Remove the defective membrane section and prepare the substrate.','Reapply or replace the membrane with correct laps, seams, fillets and curing times, in accordance with the manufacturer\'s specification.'].concat(END))
+  ];
+  LIB.splice.apply(LIB,[i+1,0].concat(adds));
+})();
 function suggestFor(e, pj){
   const edKey = pj.ncc || '';
   const volKey = pj.cls==='2' ? 'v1' : pj.cls==='1' ? 'v2' : '';
@@ -824,6 +867,7 @@ function suggestFor(e, pj){
   if(hit){
     const t = typeof hit==='string' ? hit : hit.t;
     lines.push('Non-compliance with '+edLabel+' '+volLabel+': '+t+'.'+(hit.c ? ' Clause: [CONFIRM CLAUSE].' : ''));
+    if(hit.r) lines.push('Summary of the requirement: '+hit.r);
   } else if(e.fb){
     lines.push('Non-compliance with '+edLabel+' '+volLabel+': '+e.fb+'. Clause: [CONFIRM CLAUSE].');
   }
