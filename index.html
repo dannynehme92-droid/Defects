@@ -57,7 +57,7 @@ h2{font-size:17px;font-weight:700;letter-spacing:-.005em}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;border:0;background:transparent;color:var(--muted)}
 .field{display:block;margin:0 0 16px}
 .field>span{display:block;font-weight:650;margin-bottom:6px;font-size:15px}
-input[type=text],input[type=date],input[type=search],textarea{width:100%;min-height:48px;padding:11px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--raised)}
+input[type=text],input[type=date],input[type=search],select,textarea{width:100%;min-height:48px;padding:11px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--raised)}
 textarea{resize:vertical;line-height:1.4}
 
 /* cards */
@@ -320,10 +320,10 @@ function saveProject(){
   const initials = (s.initials||'').trim().toUpperCase().slice(0,10);
   prefs.initials = initials; sset('prefs:main', JSON.stringify(prefs));
   if(s.id){
-    const p = jobs.projects.find(x=>x.id===s.id); p.address = address; p.date = s.date||''; p.initials = initials;
+    const p = jobs.projects.find(x=>x.id===s.id); p.address = address; p.date = s.date||''; p.initials = initials; p.cls = s.cls||''; p.ncc = s.ncc||'';
     state.sheet = null; persist(); render(); toast('Project updated');
   } else {
-    const np = {id:uid(),address:address,date:s.date||'',initials:initials,done:false,created:Date.now(),buildings:[]};
+    const np = {id:uid(),address:address,date:s.date||'',initials:initials,cls:s.cls||'',ncc:s.ncc||'',done:false,created:Date.now(),buildings:[]};
     jobs.projects.push(np); state.sheet = null; persist(); openProject(np.id);
   }
 }
@@ -387,7 +387,9 @@ function renderIncident(){
   return '<header class="topbar"><button class="back" data-action="back-main">'+icon('back')+'<span>'+esc(u.name)+'</span></button></header>'
     +'<main class="pad"><h1 style="margin-bottom:14px">'+(e.id?'Edit incident':'New incident')+'</h1>'
     +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
-    +f('area','Area','line')+f('description','Description')+f('causes','Causes')+f('breach','Breach')+f('scope','Scope of rectification')
+    +f('area','Area','line')+f('description','Description')+f('causes','Causes')
+    +'<button class="btn ghost block" style="margin:0 0 6px" data-action="suggest-open">Suggest breach and scope wording</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Adds starting wording from a list of common defects. Confirm every clause before you rely on it.</p>'
+    +f('breach','Breach')+f('scope','Scope of rectification')
     +'<div class="field"><span>Photos'+(d.photos.length?' ('+d.photos.length+')':'')+'</span>'
     +(d.photos.length?'<div class="thumbs">'+photos+'</div>':'<p class="sub">Use the gallery or camera button to add photos.</p>')+'</div>'
     +(e.id?'<button class="btn danger" data-action="delete-incident">Delete incident</button>':'')
@@ -416,6 +418,8 @@ function renderSheet(){
       +'<div class="sheethead"><h2 id="st">'+(s.id?'Edit project':'New project')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<label class="field"><span>Job address</span><input type="text" id="projAddr" data-p="address" value="'+esc(s.address)+'" placeholder="e.g. 22-28 Zetland Ave, Zetland" autocomplete="off"></label>'
       +'<label class="field"><span>Inspection date</span><input type="date" data-p="date" value="'+esc(s.date)+'"></label>'
+      +'<label class="field"><span>Building class</span><select data-p="cls">'+[['','Not set'],['1','Class 1 (house, townhouse)'],['2','Class 2 (apartment building)'],['other','Other']].map(o=>'<option value="'+o[0]+'"'+((s.cls||'')===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></label>'
+      +'<label class="field"><span>NCC edition that applies</span><select data-p="ncc">'+[['','Not set'],['2022','NCC 2022'],['2019','NCC 2019'],['2016','NCC 2016'],['older','BCA 2015 or earlier']].map(o=>'<option value="'+o[0]+'"'+((s.ncc||'')===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select><p class="hint" style="margin-top:6px;font-size:14px;color:var(--muted)">Use the edition in force when the building was approved, not today\'s.</p></label>'
       +'<label class="field"><span>Your initials (optional)</span><input type="text" data-p="initials" maxlength="10" value="'+esc(s.initials)+'" autocapitalize="characters" autocomplete="off"></label>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="save-project">'+(s.id?'Save':'Create project')+'</button></div></div>';
   } else if(s.type==='menu'){
@@ -429,12 +433,26 @@ function renderSheet(){
   } else if(s.type==='report'){
     const b = proj.buildings.find(x=>x.id===s.id);
     const nInc = b.units.reduce((n,u)=>n+u.incidents.length,0), nPh = b.units.reduce((n,u)=>n+photosOfUnit(u).length,0);
+    let nPlace = 0; b.units.forEach(u=>u.incidents.forEach(i=>{ if(((i.breach||'')+(i.scope||'')).indexOf('[CONFIRM')>=0) nPlace++; }));
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Word report</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<p class="sub" style="margin-bottom:16px">'+esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.</p>'
+      +(nPlace?'<p class="sub" style="margin-bottom:14px;color:var(--hazard)">'+nPlace+' incident'+(nPlace===1?'':'s')+' still ha'+(nPlace===1?'s':'ve')+' [CONFIRM] placeholders in the breach or scope. Resolve them before you issue this report.</p>':'')
       +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
       +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="report-make">Create Word file</button></div></div>';
+  } else if(s.type==='suggest'){
+    const q = (s.q||'').trim().toLowerCase();
+    const items = LIB.filter(x=>!q || (x.name+' '+x.as.map(a=>a[0]+' '+a[1]).join(' ')).toLowerCase().indexOf(q)>=0);
+    const edTxt = proj.ncc ? (proj.ncc==='older'?'BCA 2015 or earlier':'NCC '+proj.ncc) : null;
+    const clsTxt = proj.cls==='1' ? 'Class 1 (Volume Two)' : proj.cls==='2' ? 'Class 2 (Volume One)' : null;
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">Suggest breach and scope</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<p class="sub" style="margin-bottom:8px">'+(edTxt&&clsTxt ? 'Using '+esc(edTxt)+', '+esc(clsTxt)+' from the project details.' : 'The NCC edition or building class is not set for this project, so those parts will show as [CONFIRM]. You can set them under Edit details on the project.')+'</p>'
+      +'<p class="sub" style="margin-bottom:12px;color:var(--hazard)">Starting points only. Clause numbers are left for you to confirm against the edition that applies to this building.</p>'
+      +'<div class="search"><input type="search" data-lib value="'+esc(s.q||'')+'" placeholder="Search defect types" aria-label="Search defect types" autocomplete="off">'+icon('search',20)+'</div>'
+      +(items.length ? '<div class="menulist">'+items.map(x=>'<button class="btn ghost" style="text-align:left;justify-content:flex-start;height:auto;padding:12px 16px" data-action="pick-lib" data-id="'+x.id+'">'+esc(x.name)+'</button>').join('')+'</div>' : '<p class="empty">No match.</p>')
+      +'</div>';
   } else if(s.type==='backup'){
     let nPr = jobs.projects.length, nB = 0, nI = 0, nP = 0;
     jobs.projects.forEach(pj=>pj.buildings.forEach(b=>{ nB++; b.units.forEach(u=>u.incidents.forEach(i=>{ nI++; nP += i.photos.length; })); }));
@@ -558,6 +576,8 @@ function makeDocx(JSZipCtor,d){
   var kv = '';
   if(d.project && d.project.address) kv += kvRow('Property',d.project.address);
   if(d.project && d.project.dateText) kv += kvRow('Inspection date',d.project.dateText);
+  if(d.project && d.project.clsText) kv += kvRow('Building class',d.project.clsText);
+  if(d.project && d.project.nccText) kv += kvRow('Code edition assessed against',d.project.nccText);
   kv += kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
   if(d.prepared) kv += kvRow('Prepared by',d.prepared);
   kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc));
@@ -653,7 +673,7 @@ async function prepareReport(id,prepared,withPhotos){
     }
     units.push({name:u.name,incidents:incs});
   }
-  return {building:{ref:b.ref,name:b.name},project:{address:proj.address||'',dateText:fmtD(proj.date)},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
+  return {building:{ref:b.ref,name:b.name},project:{address:proj.address||'',dateText:fmtD(proj.date),clsText:({'1':'Class 1','2':'Class 2','other':'Other'})[proj.cls]||'',nccText:({'2022':'NCC 2022','2019':'NCC 2019','2016':'NCC 2016','older':'BCA 2015 or earlier'})[proj.ncc]||''},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
 }
 let generating = false;
 async function runReport(){
@@ -672,6 +692,95 @@ async function runReport(){
     state.sheet = {type:'ready',url:url,blob:blob,name:'Defect-report-'+safe+'-'+isoToday()+'.docx'}; renderSheet();
   }catch(err){ console.error(err); state.sheet = null; renderSheet(); toast("Couldn't create the report. Try again."); }
   generating = false;
+}
+
+/* ---------- Defect suggestion library ---------- */
+/* Starting wording only. Clause numbers are deliberately left as [CONFIRM CLAUSE]. */
+const LIB = [
+  {id:'wet',name:'Waterproofing: bathrooms, laundries and wet areas',ncc:'wet area waterproofing and weatherproofing (health and amenity provisions)',
+   as:[['AS 3740','Waterproofing of domestic wet areas']],
+   scope:['Remove affected tiles, bedding and screed as required to expose the substrate and membrane.','Repair the substrate and install a compliant waterproofing system, including flashings, upstands, bond breakers and floor waste connections, in accordance with the standard and the membrane manufacturer\'s specification.','Flood test and record the result before covering.','Re-lay finishes and reseal junctions.','Provide written certification of the waterproofing work on completion.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'extwp',name:'Waterproofing: balconies, terraces, podiums and roofs',ncc:'weatherproofing and external above-ground waterproofing',
+   as:[['AS 4654.1','Waterproofing membranes for external above-ground use \u2014 Materials'],['AS 4654.2','Waterproofing membranes for external above-ground use \u2014 Design and installation']],
+   scope:['Remove finishes and failed membrane as required to expose the substrate.','Correct substrate, falls and drainage so water does not pond.','Install a compliant membrane system with correct upturns, flashings and penetration details, in accordance with the standard and the manufacturer\'s specification.','Carry out a ponding or flood test and record the result before reinstating finishes.','Reinstate finishes and provide written certification and warranty documents.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'roofdrain',name:'Roof drainage, gutters, downpipes and ponding',ncc:'stormwater drainage and weatherproofing',
+   as:[['AS/NZS 3500.3','Plumbing and drainage \u2014 Stormwater drainage']],
+   scope:['Clear, repair or replace gutters, sumps and downpipes as required.','Correct falls and outlet capacity, and provide overflow paths where required.','Confirm connection to the approved stormwater system and test.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'roofcl',name:'Roof cladding, flashings and penetrations',ncc:'weatherproofing of roofs',
+   as:[['AS 1562.1','Design and installation of sheet roof and wall cladding \u2014 Metal'],['AS 2050','Installation of roof tiles']],
+   scope:['Remove and refix or replace affected roof sheeting or tiles.','Install compliant flashings, sealing and fixings at ridges, valleys, penetrations and abutments.','Water test the repaired areas.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'wallcl',name:'External wall cladding, render and weatherproofing',ncc:'weatherproofing of external walls',
+   as:[['AS 4200.2','Pliable building membranes and underlays \u2014 Installation requirements'],['AS 3700','Masonry structures']],
+   scope:['Remove affected cladding or render to expose the substrate and wall underlay.','Repair the underlay, flashings, sealing and drainage paths.','Reinstate cladding or render in accordance with the manufacturer\'s installation requirements.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'struct',name:'Structural cracking, concrete defects and spalling',ncc:'structural provisions',
+   as:[['AS 3600','Concrete structures'],['AS 2870','Residential slabs and footings']],
+   scope:['Engage a structural engineer to assess the cause and extent and to specify the repair.','Carry out the repair in accordance with the engineer\'s specification, including treatment of exposed or corroded reinforcement where present.','Monitor and re-inspect as the engineer directs.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'basement',name:'Basement water ingress, shotcrete and retaining walls',ncc:'structural, damp and weatherproofing provisions',
+   as:[['AS 4678','Earth-retaining structures'],['AS 3600','Concrete structures'],['AS/NZS 3500.3','Plumbing and drainage \u2014 Stormwater drainage']],
+   scope:['Investigate the source of water ingress and the condition of the wall, shotcrete and drainage.','Engage a structural or geotechnical engineer where required to specify repairs.','Repair or replace the wall finish, drainage and waterproofing as specified.','Test and monitor after rectification.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'foot',name:'Footings and slabs',ncc:'structural provisions',
+   as:[['AS 2870','Residential slabs and footings'],['AS 3600','Concrete structures']],
+   scope:['Engage a structural engineer to investigate and specify the repair.','Carry out the repair as specified, which may include underpinning, crack repair or drainage correction.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'timb',name:'Timber framing',ncc:'structural provisions for framing',
+   as:[['AS 1684.2','Residential timber-framed construction \u2014 Non-cyclonic areas']],
+   scope:['Replace or repair framing members, bracing, fixings or connections as required.','Obtain engineer certification where the work departs from the prescriptive requirements.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'firedoor',name:'Fire doors and fire-rated doorsets',ncc:'fire resistance and protection of openings (Section C)',
+   as:[['AS 1905.1','Components for the protection of openings in fire-resistant walls \u2014 Fire-resistant doorsets'],['AS 1851','Routine service of fire protection systems and equipment']],
+   scope:['Repair or replace the door, frame, hardware, seals and closer so the doorset is self-closing and latching and matches its tested system.','Provide certification for the replaced or repaired doorset.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'firestop',name:'Fire stopping and service penetrations',ncc:'fire resistance and compartmentation (Section C)',
+   as:[['AS 4072.1','Components for the protection of openings in fire-resistant separating elements \u2014 Service penetrations and control joints']],
+   scope:['Install fire-stopping systems that match a tested and certified system for each penetration and joint.','Label penetrations and keep a record of the systems used.','Provide installer certification.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'firesys',name:'Fire safety systems (sprinklers, hydrants, hose reels, extinguishers, detection)',ncc:'services and equipment (Section E)',
+   as:[['AS 2118.1','Automatic fire sprinkler systems \u2014 General systems'],['AS 2419.1','Fire hydrant installations \u2014 System design, installation and commissioning'],['AS 2441','Installation of fire hose reels'],['AS 2444','Portable fire extinguishers and fire blankets \u2014 Selection and location'],['AS 1670.1','Fire detection, warning, control and intercom systems \u2014 System design, installation and commissioning \u2014 Fire'],['AS 1851','Routine service of fire protection systems and equipment']],
+   scope:['Engage a suitably accredited fire protection contractor to rectify, test and commission the affected system.','Provide test results and certification, and update fire safety records as required.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'emlight',name:'Emergency lighting and exit signs',ncc:'emergency lighting, exit signs and warning systems (Section E)',
+   as:[['AS 2293.1','Emergency lighting and exit signs for buildings \u2014 System design, installation and operation'],['AS 1851','Routine service of fire protection systems and equipment']],
+   scope:['Install, relocate or repair emergency lights and exit signs so coverage and operation meet the requirements.','Test discharge duration and provide certification.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'smoke',name:'Smoke alarms',ncc:'fire safety provisions for smoke alarms',
+   as:[['AS 3786','Smoke alarms using scattered light, transmitted light or ionization']],
+   scope:['Install or replace compliant smoke alarms in the required locations, interconnected where required.','Test each alarm and record the results.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'egress',name:'Egress, stairs, balustrades and handrails',ncc:'access and egress provisions',
+   as:[['AS/NZS 1170.1','Structural design actions \u2014 Permanent, imposed and other actions'],['AS 1428.1','Design for access and mobility \u2014 General requirements for access \u2014 New building work']],
+   scope:['Modify or replace treads, risers, balustrades, handrails or fixings so dimensions, openings and loads meet the requirements.','Obtain engineer certification of the replacement balustrade or fixings where required.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'glaz',name:'Glazing and glass',ncc:'glazing provisions',
+   as:[['AS 1288','Glass in buildings \u2014 Selection and installation']],
+   scope:['Replace glass that does not meet the required type, thickness or marking for its location.','Check frames, fixings and seals when reglazing.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'plumb',name:'Plumbing, drainage and hot water',ncc:'plumbing provisions',vol:'Volume Three (Plumbing Code of Australia)',
+   as:[['AS/NZS 3500.1','Plumbing and drainage \u2014 Water services'],['AS/NZS 3500.2','Plumbing and drainage \u2014 Sanitary plumbing and drainage'],['AS/NZS 3500.4','Plumbing and drainage \u2014 Heated water services']],
+   scope:['Rectification by a licensed plumber, including testing.','Provide the compliance certificate required in your state.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'elec',name:'Electrical installation',ncc:null,
+   as:[['AS/NZS 3000','Electrical installations (known as the Australian/New Zealand Wiring Rules)']],
+   scope:['Rectification by a licensed electrician, including testing.','Provide the compliance certificate required in your state.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'lift',name:'Lifts',ncc:'lift installations (Section E)',
+   as:[['AS 1735','Lifts, escalators and moving walkways']],
+   scope:['Engage the lift contractor to rectify, test and recertify the lift.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'sound',name:'Sound insulation between sole-occupancy units',ncc:'sound transmission and insulation (Section F)',
+   as:[],
+   scope:['Engage an acoustic consultant to test and assess the walls and floors against the applicable edition.','Rectify the construction as specified, then retest to confirm compliance.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'termite',name:'Termite management',ncc:'termite risk management',
+   as:[['AS 3660.1','Termite management \u2014 New building work']],
+   scope:['Engage a licensed termite management specialist to inspect and reinstate the termite management system.','Provide certification and a durable notice as required.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'vent',name:'Ventilation, condensation and mould',ncc:'health and amenity provisions for ventilation and damp',
+   as:[['AS 1668.2','The use of ventilation and airconditioning in buildings \u2014 Mechanical ventilation in buildings']],
+   scope:['Identify and remove the moisture source.','Install or repair ventilation, ducted to outside air, to meet the required rates.','Clean and treat affected surfaces and reinstate finishes.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'tile',name:'Tiling',ncc:null,
+   as:[['AS 3958.1','Ceramic tiles \u2014 Guide to the installation of ceramic tiles']],
+   scope:['Remove and relay defective tiles, with correct bedding, grout and movement joints.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'plaster',name:'Plasterboard, painting and finishes',ncc:null,
+   as:[['AS/NZS 2589','Gypsum linings \u2014 Application and finishing'],['AS/NZS 2311','Guide to the painting of buildings']],
+   scope:['Repair and refinish affected surfaces to an acceptable standard.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'other',name:'Other defect (blank template)',ncc:'[CONFIRM PROVISION]',as:[],
+   scope:['[DESCRIBE RECTIFICATION WORKS].','Extent of works: [CONFIRM EXTENT].']}
+];
+function suggestFor(e, pj){
+  const ed = pj.ncc==='older' ? 'BCA [CONFIRM EDITION]' : pj.ncc ? 'NCC '+pj.ncc : 'NCC [CONFIRM EDITION]';
+  const vol = e.vol || (pj.cls==='1' ? 'Volume Two' : pj.cls==='2' ? 'Volume One' : '[CONFIRM VOLUME]');
+  const lines = [];
+  if(e.ncc) lines.push('Non-compliance with '+ed+' '+vol+': '+e.ncc+'. Clause: [CONFIRM CLAUSE].');
+  e.as.forEach(a=>lines.push('Non-compliance with '+a[0]+' '+a[1]+'. Clause: [CONFIRM CLAUSE].'));
+  if(e.as.length>1) lines.push('[Delete any standard above that does not apply.]');
+  if(e.as.length) lines.push('Edition of each standard to be as referenced by the applicable code edition. [CONFIRM EDITION OF STANDARDS]');
+  return {breach:lines.join('\n'), scope:e.scope.map((l,i)=>(i+1)+'. '+l).join('\n')};
 }
 
 /* ---------- Backup and restore ---------- */
@@ -724,7 +833,7 @@ function parseBackup(o){
       })};
     });
     nB += buildings.length;
-    return {id:pj.id,address:str(pj.address),date:/^\d{4}-\d{2}-\d{2}$/.test(pj.date||'')?pj.date:'',initials:str(pj.initials).slice(0,10),done:!!pj.done,created:Number(pj.created)||Date.now(),buildings:buildings};
+    return {id:pj.id,address:str(pj.address),date:/^\d{4}-\d{2}-\d{2}$/.test(pj.date||'')?pj.date:'',initials:str(pj.initials).slice(0,10),cls:/^(1|2|other)$/.test(pj.cls)?pj.cls:'',ncc:/^(2022|2019|2016|older)$/.test(pj.ncc)?pj.ncc:'',done:!!pj.done,created:Number(pj.created)||Date.now(),buildings:buildings};
   });
   return {root:{projects:outProjects},photos:photos,counts:{projects:outProjects.length,buildings:nB,incidents:nInc,photos:nPh},exported:o.exported};
 }
@@ -752,8 +861,14 @@ document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
-    case 'new-project': state.sheet = {type:'project',id:null,address:'',date:isoToday(),initials:prefs.initials||''}; renderSheet(); break;
-    case 'edit-project': { const p = jobs.projects.find(x=>x.id===state.sheet.id); state.sheet = {type:'project',id:p.id,address:p.address,date:p.date||'',initials:p.initials||''}; renderSheet(); break; }
+    case 'suggest-open': state.sheet = {type:'suggest',q:''}; renderSheet(); break;
+    case 'pick-lib': {
+      const entry = LIB.find(x=>x.id===t.dataset.id), r = suggestFor(entry, proj), d = state.edit.draft;
+      d.breach = d.breach.trim() ? d.breach.trim()+'\n\n'+r.breach : r.breach;
+      d.scope = d.scope.trim() ? d.scope.trim()+'\n\n'+r.scope : r.scope;
+      state.sheet = null; render(); toast('Added. Confirm every clause marked [CONFIRM CLAUSE].'); break; }
+    case 'new-project': state.sheet = {type:'project',id:null,address:'',date:isoToday(),initials:prefs.initials||'',cls:prefs.cls||'',ncc:''}; renderSheet(); break;
+    case 'edit-project': { const p = jobs.projects.find(x=>x.id===state.sheet.id); state.sheet = {type:'project',id:p.id,address:p.address,date:p.date||'',initials:p.initials||'',cls:p.cls||'',ncc:p.ncc||''}; renderSheet(); break; }
     case 'save-project': saveProject(); break;
     case 'open-project': openProject(t.dataset.id); break;
     case 'close-project': closeProject(); break;
@@ -843,6 +958,10 @@ document.addEventListener('input', ev=>{
   const t = ev.target;
   if(t.dataset.f && state.edit) state.edit.draft[t.dataset.f] = t.value;
   else if(t.dataset.p && state.sheet && state.sheet.type==='project') state.sheet[t.dataset.p] = t.value;
+  else if(t.dataset.lib !== undefined && state.sheet && state.sheet.type==='suggest'){
+    state.sheet.q = t.value; renderSheet();
+    const el = document.querySelector('[data-lib]'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
   else if(t.dataset.search !== undefined){
     state.ui.q = t.value; render();
     const el = document.querySelector('[data-search]'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
