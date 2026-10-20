@@ -443,13 +443,13 @@ function renderSheet(){
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="report-make">Create Word file</button></div></div>';
   } else if(s.type==='suggest'){
     const q = (s.q||'').trim().toLowerCase();
-    const items = LIB.filter(x=>!q || (x.name+' '+x.as.map(a=>a[0]+' '+a[1]).join(' ')).toLowerCase().indexOf(q)>=0);
+    const items = LIB.filter(x=>!q || (x.name+' '+x.std.map(a=>a.n+' '+a.t).join(' ')).toLowerCase().indexOf(q)>=0);
     const edTxt = proj.ncc ? (proj.ncc==='older'?'BCA 2015 or earlier':'NCC '+proj.ncc) : null;
     const clsTxt = proj.cls==='1' ? 'Class 1 (Volume Two)' : proj.cls==='2' ? 'Class 2 (Volume One)' : null;
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Suggest breach and scope</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<p class="sub" style="margin-bottom:8px">'+(edTxt&&clsTxt ? 'Using '+esc(edTxt)+', '+esc(clsTxt)+' from the project details.' : 'The NCC edition or building class is not set for this project, so those parts will show as [CONFIRM]. You can set them under Edit details on the project.')+'</p>'
-      +'<p class="sub" style="margin-bottom:12px;color:var(--hazard)">Starting points only. Clause numbers are left for you to confirm against the edition that applies to this building.</p>'
+      +'<p class="sub" style="margin-bottom:12px;color:var(--hazard)">NCC references are filled in where they were checked for the selected edition. Anything marked [CONFIRM] still needs checking. Standards are cited by number and title, with clause numbers only where confirmed. Always check against the code edition that applies to this building.</p>'
       +'<div class="search"><input type="search" data-lib value="'+esc(s.q||'')+'" placeholder="Search defect types" aria-label="Search defect types" autocomplete="off">'+icon('search',20)+'</div>'
       +(items.length ? '<div class="menulist">'+items.map(x=>'<button class="btn ghost" style="text-align:left;justify-content:flex-start;height:auto;padding:12px 16px" data-action="pick-lib" data-id="'+x.id+'">'+esc(x.name)+'</button>').join('')+'</div>' : '<p class="empty">No match.</p>')
       +'</div>';
@@ -694,92 +694,145 @@ async function runReport(){
   generating = false;
 }
 
-/* ---------- Defect suggestion library ---------- */
-/* Starting wording only. Clause numbers are deliberately left as [CONFIRM CLAUSE]. */
+/* ---------- NCC and Australian Standards reference library ---------- */
+/* NCC references were checked against ABCB and state government pages. Anything not confirmed is marked [CONFIRM]. */
+const D = '\u2014';
+const AS3740 = {n:'AS 3740',t:'Waterproofing of domestic wet areas',ed:{'2022':'2021','2019':'2010'}};
+const AS46541 = {n:'AS 4654.1',t:'Waterproofing membranes for external above-ground use '+D+' Materials',ed:{'2022':'2012','2019':'2012','2016':'2012'}};
+const AS46542 = {n:'AS 4654.2',t:'Waterproofing membranes for external above-ground use '+D+' Design and installation',ed:{'2022':'2012','2019':'2012','2016':'2012'}};
+const AS1288 = {n:'AS 1288',t:'Glass in buildings '+D+' Selection and installation',ed:{'2022':'2021','2019':'2006'}};
+const WET_NCC = {
+  '2022':{v1:'Performance Requirement F2P2 (Wet areas); Deemed-to-Satisfy Provisions F2D2 (Wet area construction) and Specification 26 (S26C3 to S26C6, as applicable)',
+          v2:'Performance Requirement H4P1 (Wet areas); Deemed-to-Satisfy Provisions H4D2 and H4D3; ABCB Housing Provisions Part 10.2 (Wet area waterproofing)'},
+  '2019':{v1:'Performance Requirement FP1.7 (Wet areas); F1.7 (Wet area construction) and Table F1.7',
+          v2:'Performance Requirement P2.4.1 (Wet areas); Part 3.8.1, clause 3.8.1.2 (Wet areas) and Table 3.8.1.1'},
+  '2016':{v2:'Performance Requirement P2.4.1 (Wet areas); Part 3.8.1 and Table 3.8.1.1'}
+};
+function wet(id,name,cl,scope){
+  return {id:id,name:name,fb:'wet area waterproofing and weatherproofing (health and amenity provisions)',ncc:WET_NCC,
+    std:[Object.assign({},AS3740,{cl:cl?{'2022':cl}:{}})],scope:scope};
+}
+const WET_SCOPE_END = ['Flood test and record the result before covering.','Re-lay finishes and reseal junctions.','Provide written certification of the waterproofing work on completion.','Extent of works: [CONFIRM EXTENT].'];
 const LIB = [
-  {id:'wet',name:'Waterproofing: bathrooms, laundries and wet areas',ncc:'wet area waterproofing and weatherproofing (health and amenity provisions)',
-   as:[['AS 3740','Waterproofing of domestic wet areas']],
-   scope:['Remove affected tiles, bedding and screed as required to expose the substrate and membrane.','Repair the substrate and install a compliant waterproofing system, including flashings, upstands, bond breakers and floor waste connections, in accordance with the standard and the membrane manufacturer\'s specification.','Flood test and record the result before covering.','Re-lay finishes and reseal junctions.','Provide written certification of the waterproofing work on completion.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'extwp',name:'Waterproofing: balconies, terraces, podiums and roofs',ncc:'weatherproofing and external above-ground waterproofing',
-   as:[['AS 4654.1','Waterproofing membranes for external above-ground use \u2014 Materials'],['AS 4654.2','Waterproofing membranes for external above-ground use \u2014 Design and installation']],
+  wet('wet','Waterproofing: bathrooms, laundries and wet areas (general)',null,
+    ['Remove affected tiles, bedding and screed as required to expose the substrate and membrane.','Repair the substrate and install a compliant waterproofing system, including flashings, upstands, bond breakers and floor waste connections, in accordance with the standard and the membrane manufacturer\'s specification.'].concat(WET_SCOPE_END)),
+  wet('wetfalls','Wet areas: falls and ponding','clauses 2.3.3 and 2.3.4 (falls in wet area floor finishes)',
+    ['Remove floor finishes and bedding as required.','Correct the falls to the floor waste so water does not pond, and confirm membrane continuity.'].concat(WET_SCOPE_END)),
+  wet('wetterm','Wet areas: membrane termination at showers (waterstops and hobs)','clauses 4.6.1 and 4.6.2 (termination of membranes at shower recess waterstops and at showers with hobs)',
+    ['Remove finishes at the shower edge to expose the membrane termination.','Reinstate the membrane termination at the waterstop or hob using compliant detailing and materials.'].concat(WET_SCOPE_END)),
+  wet('wetbond','Wet areas: fillets and bond breakers','clause 4.10 (fillets and bond breakers)',
+    ['Remove finishes at the affected junctions and movement joints.','Install compliant fillets and bond breakers (where a bonded membrane is used) and reinstate the membrane over them.'].concat(WET_SCOPE_END)),
+  wet('wetpen','Wet areas: penetrations (taps, wastes, outlets)','clause 4.12 (penetrations, including 4.12.1 for shower areas and 4.12.3 for other penetrations in Category 1 areas)',
+    ['Remove finishes around the affected penetrations.','Seal or waterproof each penetration with compliant flanges, collars or sealing details integrated with the membrane.'].concat(WET_SCOPE_END)),
+  {id:'extwp',name:'Waterproofing: balconies, terraces, podiums and roofs (external)',fb:'weatherproofing and external above-ground waterproofing',
+   ncc:{'2022':{v1:'Performance Requirement F1P2 (Preventing rainwater from entering buildings); Deemed-to-Satisfy Provisions F1D4 (Exposed joints) and F1D5 (external waterproofing membranes)',v2:'Deemed-to-Satisfy Provisions H2D8 (external waterproofing)'},
+        '2019':{v1:'Performance Requirement FP1.2 (Preventing rainwater from entering buildings); F1.4 (waterproofing membranes for external above-ground use)',v2:'Performance Requirement P2.2.2 (external waterproofing); Part 3.8.1, clause 3.8.1.3 (External above ground membranes)'},
+        '2016':{v2:'Performance Requirement P2.2.2 (external waterproofing); Part 3.8.1 (external above ground membranes)'}},
+   std:[AS46541,AS46542],
    scope:['Remove finishes and failed membrane as required to expose the substrate.','Correct substrate, falls and drainage so water does not pond.','Install a compliant membrane system with correct upturns, flashings and penetration details, in accordance with the standard and the manufacturer\'s specification.','Carry out a ponding or flood test and record the result before reinstating finishes.','Reinstate finishes and provide written certification and warranty documents.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'roofdrain',name:'Roof drainage, gutters, downpipes and ponding',ncc:'stormwater drainage and weatherproofing',
-   as:[['AS/NZS 3500.3','Plumbing and drainage \u2014 Stormwater drainage']],
+  {id:'roofdrain',name:'Roof drainage, gutters, downpipes and ponding',fb:'stormwater drainage and weatherproofing',
+   ncc:{'2022':{v1:'Performance Requirement F1P3 (Rainwater drainage systems); Deemed-to-Satisfy Provision F1D3 (Stormwater drainage)'},'2019':{v1:'Performance Requirement FP1.3 (Rainwater drainage systems); F1.1 (Stormwater drainage)'}},
+   std:[{n:'AS/NZS 3500.3',t:'Plumbing and drainage '+D+' Stormwater drainage'}],
    scope:['Clear, repair or replace gutters, sumps and downpipes as required.','Correct falls and outlet capacity, and provide overflow paths where required.','Confirm connection to the approved stormwater system and test.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'roofcl',name:'Roof cladding, flashings and penetrations',ncc:'weatherproofing of roofs',
-   as:[['AS 1562.1','Design and installation of sheet roof and wall cladding \u2014 Metal'],['AS 2050','Installation of roof tiles']],
+  {id:'roofcl',name:'Roof cladding, flashings and penetrations',fb:'weatherproofing of roofs',
+   ncc:{'2022':{v1:{t:'Part F3 (Roof and wall cladding)',c:true}}},
+   std:[{n:'AS 1562.1',t:'Design and installation of sheet roof and wall cladding '+D+' Metal'},{n:'AS 2050',t:'Installation of roof tiles'}],
    scope:['Remove and refix or replace affected roof sheeting or tiles.','Install compliant flashings, sealing and fixings at ridges, valleys, penetrations and abutments.','Water test the repaired areas.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'wallcl',name:'External wall cladding, render and weatherproofing',ncc:'weatherproofing of external walls',
-   as:[['AS 4200.2','Pliable building membranes and underlays \u2014 Installation requirements'],['AS 3700','Masonry structures']],
+  {id:'wallcl',name:'External wall cladding, render and weatherproofing',fb:'weatherproofing of external walls',
+   ncc:{'2022':{v1:{t:'Part F3 (Roof and wall cladding)',c:true}}},
+   std:[{n:'AS 4200.2',t:'Pliable building membranes and underlays '+D+' Installation requirements'},{n:'AS 3700',t:'Masonry structures'}],
    scope:['Remove affected cladding or render to expose the substrate and wall underlay.','Repair the underlay, flashings, sealing and drainage paths.','Reinstate cladding or render in accordance with the manufacturer\'s installation requirements.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'struct',name:'Structural cracking, concrete defects and spalling',ncc:'structural provisions',
-   as:[['AS 3600','Concrete structures'],['AS 2870','Residential slabs and footings']],
+  {id:'struct',name:'Structural cracking, concrete defects and spalling',fb:'structural provisions (Section B)',
+   std:[{n:'AS 3600',t:'Concrete structures'},{n:'AS 2870',t:'Residential slabs and footings'}],
    scope:['Engage a structural engineer to assess the cause and extent and to specify the repair.','Carry out the repair in accordance with the engineer\'s specification, including treatment of exposed or corroded reinforcement where present.','Monitor and re-inspect as the engineer directs.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'basement',name:'Basement water ingress, shotcrete and retaining walls',ncc:'structural, damp and weatherproofing provisions',
-   as:[['AS 4678','Earth-retaining structures'],['AS 3600','Concrete structures'],['AS/NZS 3500.3','Plumbing and drainage \u2014 Stormwater drainage']],
+  {id:'basement',name:'Basement water ingress, shotcrete and retaining walls',fb:'structural, damp and weatherproofing provisions',
+   std:[{n:'AS 4678',t:'Earth-retaining structures'},{n:'AS 3600',t:'Concrete structures'},{n:'AS/NZS 3500.3',t:'Plumbing and drainage '+D+' Stormwater drainage'}],
    scope:['Investigate the source of water ingress and the condition of the wall, shotcrete and drainage.','Engage a structural or geotechnical engineer where required to specify repairs.','Repair or replace the wall finish, drainage and waterproofing as specified.','Test and monitor after rectification.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'foot',name:'Footings and slabs',ncc:'structural provisions',
-   as:[['AS 2870','Residential slabs and footings'],['AS 3600','Concrete structures']],
+  {id:'foot',name:'Footings and slabs',fb:'structural provisions (Section B)',
+   std:[{n:'AS 2870',t:'Residential slabs and footings'},{n:'AS 3600',t:'Concrete structures'}],
    scope:['Engage a structural engineer to investigate and specify the repair.','Carry out the repair as specified, which may include underpinning, crack repair or drainage correction.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'timb',name:'Timber framing',ncc:'structural provisions for framing',
-   as:[['AS 1684.2','Residential timber-framed construction \u2014 Non-cyclonic areas']],
+  {id:'timb',name:'Timber framing',fb:'structural provisions for framing',
+   std:[{n:'AS 1684.2',t:'Residential timber-framed construction '+D+' Non-cyclonic areas'}],
    scope:['Replace or repair framing members, bracing, fixings or connections as required.','Obtain engineer certification where the work departs from the prescriptive requirements.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'firedoor',name:'Fire doors and fire-rated doorsets',ncc:'fire resistance and protection of openings (Section C)',
-   as:[['AS 1905.1','Components for the protection of openings in fire-resistant walls \u2014 Fire-resistant doorsets'],['AS 1851','Routine service of fire protection systems and equipment']],
+  {id:'firedoor',name:'Fire doors and fire-rated doorsets',fb:'fire resistance and protection of openings (Section C)',
+   ncc:{'2022':{v1:'Deemed-to-Satisfy Provision C4D5 (Acceptable methods of protection) and Specification 12 (Fire doors, smoke doors, fire windows and shutters)'}},
+   std:[{n:'AS 1905.1',t:'Components for the protection of openings in fire-resistant walls '+D+' Fire-resistant doorsets'},{n:'AS 1851',t:'Routine service of fire protection systems and equipment'}],
    scope:['Repair or replace the door, frame, hardware, seals and closer so the doorset is self-closing and latching and matches its tested system.','Provide certification for the replaced or repaired doorset.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'firestop',name:'Fire stopping and service penetrations',ncc:'fire resistance and compartmentation (Section C)',
-   as:[['AS 4072.1','Components for the protection of openings in fire-resistant separating elements \u2014 Service penetrations and control joints']],
+  {id:'firestop',name:'Fire stopping and service penetrations',fb:'fire resistance and compartmentation (Section C)',
+   ncc:{'2022':{v1:'Deemed-to-Satisfy Provision C4D15 (Openings for service installations) and Specification 13 (Penetration of walls, floors and ceilings by services), including S13C7 (Fire-stopping) where applicable'},
+        '2019':{v1:'C3.15 (Openings for service installations) and Specification C3.15'}},
+   std:[{n:'AS 4072.1',t:'Components for the protection of openings in fire-resistant separating elements '+D+' Service penetrations and control joints'}],
    scope:['Install fire-stopping systems that match a tested and certified system for each penetration and joint.','Label penetrations and keep a record of the systems used.','Provide installer certification.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'firesys',name:'Fire safety systems (sprinklers, hydrants, hose reels, extinguishers, detection)',ncc:'services and equipment (Section E)',
-   as:[['AS 2118.1','Automatic fire sprinkler systems \u2014 General systems'],['AS 2419.1','Fire hydrant installations \u2014 System design, installation and commissioning'],['AS 2441','Installation of fire hose reels'],['AS 2444','Portable fire extinguishers and fire blankets \u2014 Selection and location'],['AS 1670.1','Fire detection, warning, control and intercom systems \u2014 System design, installation and commissioning \u2014 Fire'],['AS 1851','Routine service of fire protection systems and equipment']],
+  {id:'firesep',name:'Fire separation: walls and floors between sole-occupancy units',fb:'fire resistance and compartmentation (Section C)',
+   ncc:{'2022':{v1:'Deemed-to-Satisfy Provision C4D12 (Bounding construction: Class 2 and 3 buildings and Class 4 parts)'},'2019':{v1:'C3.11 (Bounding construction: Class 2 and 3 buildings and Class 4 parts)'}},
+   std:[],
+   scope:['Engage a fire engineer or certifier to confirm the required fire-resistance level of the affected walls and floors.','Rectify the construction, linings, junctions and openings to achieve the required level, with certification of the completed work.','Extent of works: [CONFIRM EXTENT].']},
+  {id:'firesys',name:'Fire safety systems (sprinklers, hydrants, hose reels, extinguishers, detection)',fb:'services and equipment (Section E)',
+   std:[{n:'AS 2118.1',t:'Automatic fire sprinkler systems '+D+' General systems'},{n:'AS 2419.1',t:'Fire hydrant installations '+D+' System design, installation and commissioning'},{n:'AS 2441',t:'Installation of fire hose reels'},{n:'AS 2444',t:'Portable fire extinguishers and fire blankets '+D+' Selection and location'},{n:'AS 1670.1',t:'Fire detection, warning, control and intercom systems '+D+' System design, installation and commissioning '+D+' Fire'},{n:'AS 1851',t:'Routine service of fire protection systems and equipment'}],
    scope:['Engage a suitably accredited fire protection contractor to rectify, test and commission the affected system.','Provide test results and certification, and update fire safety records as required.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'emlight',name:'Emergency lighting and exit signs',ncc:'emergency lighting, exit signs and warning systems (Section E)',
-   as:[['AS 2293.1','Emergency lighting and exit signs for buildings \u2014 System design, installation and operation'],['AS 1851','Routine service of fire protection systems and equipment']],
+  {id:'emlight',name:'Emergency lighting and exit signs',fb:'emergency lighting, exit signs and warning systems (Section E)',
+   std:[{n:'AS 2293.1',t:'Emergency lighting and exit signs for buildings '+D+' System design, installation and operation'},{n:'AS 1851',t:'Routine service of fire protection systems and equipment'}],
    scope:['Install, relocate or repair emergency lights and exit signs so coverage and operation meet the requirements.','Test discharge duration and provide certification.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'smoke',name:'Smoke alarms',ncc:'fire safety provisions for smoke alarms',
-   as:[['AS 3786','Smoke alarms using scattered light, transmitted light or ionization']],
+  {id:'smoke',name:'Smoke alarms',fb:'smoke detection and alarm provisions',
+   ncc:{'2022':{v1:{t:'Specification 20 (Smoke detection and alarm systems)',c:true}},'2019':{v1:{t:'Specification E2.2a (Smoke detection and alarm systems)',c:true}}},
+   std:[{n:'AS 3786',t:'Smoke alarms using scattered light, transmitted light or ionization'},{n:'AS 1670.1',t:'Fire detection, warning, control and intercom systems '+D+' System design, installation and commissioning '+D+' Fire'}],
    scope:['Install or replace compliant smoke alarms in the required locations, interconnected where required.','Test each alarm and record the results.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'egress',name:'Egress, stairs, balustrades and handrails',ncc:'access and egress provisions',
-   as:[['AS/NZS 1170.1','Structural design actions \u2014 Permanent, imposed and other actions'],['AS 1428.1','Design for access and mobility \u2014 General requirements for access \u2014 New building work']],
+  {id:'egress',name:'Egress, stairs, balustrades and handrails',fb:'access and egress provisions',
+   ncc:{'2022':{v1:'Deemed-to-Satisfy Provisions D3D17 to D3D21 (barriers, including D3D18 for barrier height) and D3D22 (handrails)',v2:'ABCB Housing Provisions 11.3.3 (barriers), 11.3.4 (barrier construction) and 11.3.5 (handrails)'},
+        '2019':{v1:'D2.16 (barriers) and D2.17 (handrails)',v2:'Part 3.9.2, clauses 3.9.2.3 (barriers) and 3.9.2.4 (handrails)'}},
+   std:[{n:'AS/NZS 1170.1',t:'Structural design actions '+D+' Permanent, imposed and other actions'},{n:'AS 1428.1',t:'Design for access and mobility '+D+' General requirements for access '+D+' New building work'}],
    scope:['Modify or replace treads, risers, balustrades, handrails or fixings so dimensions, openings and loads meet the requirements.','Obtain engineer certification of the replacement balustrade or fixings where required.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'glaz',name:'Glazing and glass',ncc:'glazing provisions',
-   as:[['AS 1288','Glass in buildings \u2014 Selection and installation']],
+  {id:'glaz',name:'Glazing and glass',fb:'glazing provisions',
+   ncc:{'2022':{v1:'Deemed-to-Satisfy Provision B1D4 (glazing)',v2:'ABCB Housing Provisions 8.4.2 (glazing)'},'2019':{v1:'B1.4 (glazing)',v2:'Part 3.6.4, clause 3.6.4.1 (glazing)'}},
+   std:[AS1288],
    scope:['Replace glass that does not meet the required type, thickness or marking for its location.','Check frames, fixings and seals when reglazing.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'plumb',name:'Plumbing, drainage and hot water',ncc:'plumbing provisions',vol:'Volume Three (Plumbing Code of Australia)',
-   as:[['AS/NZS 3500.1','Plumbing and drainage \u2014 Water services'],['AS/NZS 3500.2','Plumbing and drainage \u2014 Sanitary plumbing and drainage'],['AS/NZS 3500.4','Plumbing and drainage \u2014 Heated water services']],
+  {id:'plumb',name:'Plumbing, drainage and hot water',fb:'plumbing provisions',vol:'Volume Three (Plumbing Code of Australia)',
+   std:[{n:'AS/NZS 3500.1',t:'Plumbing and drainage '+D+' Water services'},{n:'AS/NZS 3500.2',t:'Plumbing and drainage '+D+' Sanitary plumbing and drainage'},{n:'AS/NZS 3500.4',t:'Plumbing and drainage '+D+' Heated water services'}],
    scope:['Rectification by a licensed plumber, including testing.','Provide the compliance certificate required in your state.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'elec',name:'Electrical installation',ncc:null,
-   as:[['AS/NZS 3000','Electrical installations (known as the Australian/New Zealand Wiring Rules)']],
+  {id:'elec',name:'Electrical installation',fb:null,
+   std:[{n:'AS/NZS 3000',t:'Electrical installations (known as the Australian/New Zealand Wiring Rules)'}],
    scope:['Rectification by a licensed electrician, including testing.','Provide the compliance certificate required in your state.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'lift',name:'Lifts',ncc:'lift installations (Section E)',
-   as:[['AS 1735','Lifts, escalators and moving walkways']],
+  {id:'lift',name:'Lifts',fb:'lift installations (Section E)',
+   std:[{n:'AS 1735',t:'Lifts, escalators and moving walkways'}],
    scope:['Engage the lift contractor to rectify, test and recertify the lift.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'sound',name:'Sound insulation between sole-occupancy units',ncc:'sound transmission and insulation (Section F)',
-   as:[],
+  {id:'sound',name:'Sound insulation between sole-occupancy units',fb:'sound transmission and insulation (Section F)',
+   ncc:{'2022':{v1:{t:'Part F7 (Sound insulation)',c:true},v2:'Performance Requirement H4P6 (sound insulation)'},'2019':{v1:{t:'Part F5 (Sound transmission and insulation)',c:true},v2:'Performance Requirement P2.4.6 (sound insulation)'}},
+   std:[],
    scope:['Engage an acoustic consultant to test and assess the walls and floors against the applicable edition.','Rectify the construction as specified, then retest to confirm compliance.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'termite',name:'Termite management',ncc:'termite risk management',
-   as:[['AS 3660.1','Termite management \u2014 New building work']],
+  {id:'termite',name:'Termite management',fb:'termite risk management',
+   std:[{n:'AS 3660.1',t:'Termite management '+D+' New building work'}],
    scope:['Engage a licensed termite management specialist to inspect and reinstate the termite management system.','Provide certification and a durable notice as required.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'vent',name:'Ventilation, condensation and mould',ncc:'health and amenity provisions for ventilation and damp',
-   as:[['AS 1668.2','The use of ventilation and airconditioning in buildings \u2014 Mechanical ventilation in buildings']],
+  {id:'vent',name:'Ventilation, condensation and mould',fb:'health and amenity provisions for ventilation and damp',
+   std:[{n:'AS 1668.2',t:'The use of ventilation and airconditioning in buildings '+D+' Mechanical ventilation in buildings'}],
    scope:['Identify and remove the moisture source.','Install or repair ventilation, ducted to outside air, to meet the required rates.','Clean and treat affected surfaces and reinstate finishes.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'tile',name:'Tiling',ncc:null,
-   as:[['AS 3958.1','Ceramic tiles \u2014 Guide to the installation of ceramic tiles']],
+  {id:'tile',name:'Tiling',fb:null,
+   std:[{n:'AS 3958.1',t:'Ceramic tiles '+D+' Guide to the installation of ceramic tiles'}],
    scope:['Remove and relay defective tiles, with correct bedding, grout and movement joints.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'plaster',name:'Plasterboard, painting and finishes',ncc:null,
-   as:[['AS/NZS 2589','Gypsum linings \u2014 Application and finishing'],['AS/NZS 2311','Guide to the painting of buildings']],
+  {id:'plaster',name:'Plasterboard, painting and finishes',fb:null,
+   std:[{n:'AS/NZS 2589',t:'Gypsum linings '+D+' Application and finishing'},{n:'AS/NZS 2311',t:'Guide to the painting of buildings'}],
    scope:['Repair and refinish affected surfaces to an acceptable standard.','Extent of works: [CONFIRM EXTENT].']},
-  {id:'other',name:'Other defect (blank template)',ncc:'[CONFIRM PROVISION]',as:[],
+  {id:'other',name:'Other defect (blank template)',fb:'[CONFIRM PROVISION]',std:[],
    scope:['[DESCRIBE RECTIFICATION WORKS].','Extent of works: [CONFIRM EXTENT].']}
 ];
 function suggestFor(e, pj){
-  const ed = pj.ncc==='older' ? 'BCA [CONFIRM EDITION]' : pj.ncc ? 'NCC '+pj.ncc : 'NCC [CONFIRM EDITION]';
-  const vol = e.vol || (pj.cls==='1' ? 'Volume Two' : pj.cls==='2' ? 'Volume One' : '[CONFIRM VOLUME]');
+  const edKey = pj.ncc || '';
+  const volKey = pj.cls==='2' ? 'v1' : pj.cls==='1' ? 'v2' : '';
+  const edLabel = pj.ncc==='older' ? 'BCA [CONFIRM EDITION]' : pj.ncc ? 'NCC '+pj.ncc : 'NCC [CONFIRM EDITION]';
+  const volLabel = e.vol || (pj.cls==='1' ? 'Volume Two' : pj.cls==='2' ? 'Volume One' : '[CONFIRM VOLUME]');
   const lines = [];
-  if(e.ncc) lines.push('Non-compliance with '+ed+' '+vol+': '+e.ncc+'. Clause: [CONFIRM CLAUSE].');
-  e.as.forEach(a=>lines.push('Non-compliance with '+a[0]+' '+a[1]+'. Clause: [CONFIRM CLAUSE].'));
-  if(e.as.length>1) lines.push('[Delete any standard above that does not apply.]');
-  if(e.as.length) lines.push('Edition of each standard to be as referenced by the applicable code edition. [CONFIRM EDITION OF STANDARDS]');
+  const hit = e.ncc && e.ncc[edKey] && volKey ? e.ncc[edKey][volKey] : null;
+  if(hit){
+    const t = typeof hit==='string' ? hit : hit.t;
+    lines.push('Non-compliance with '+edLabel+' '+volLabel+': '+t+'.'+(hit.c ? ' Clause: [CONFIRM CLAUSE].' : ''));
+  } else if(e.fb){
+    lines.push('Non-compliance with '+edLabel+' '+volLabel+': '+e.fb+'. Clause: [CONFIRM CLAUSE].');
+  }
+  e.std.forEach(a=>{
+    const yr = a.ed && a.ed[edKey] ? ':'+a.ed[edKey] : '';
+    const cl = a.cl && a.cl[edKey] ? ', '+a.cl[edKey] : '';
+    lines.push('Non-compliance with '+a.n+yr+' '+a.t+cl+'.');
+  });
+  if(e.std.length>1) lines.push('[Delete any standard above that does not apply.]');
   return {breach:lines.join('\n'), scope:e.scope.map((l,i)=>(i+1)+'. '+l).join('\n')};
 }
 
