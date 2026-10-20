@@ -19,6 +19,7 @@
   --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#FBEBCB;
   --red:#C93A33; --red-ink:#FFFFFF; --red-bg:#F8DAD7;
   --cam:#2A2326;
+  --ok:#277A4B; --ok-ink:#FFFFFF; --ok-bg:#DDEFE5; --off:#66747C;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -29,6 +30,7 @@
     --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#443211;
     --red:#E5645D; --red-ink:#230806; --red-bg:#4A1D1A;
     --cam:#3A3236;
+    --ok:#6CCB9B; --ok-ink:#0C2417; --ok-bg:#173A2B; --off:#4A5A64;
   }
 }
 *{box-sizing:border-box}
@@ -55,7 +57,7 @@ h2{font-size:17px;font-weight:700;letter-spacing:-.005em}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;border:0;background:transparent;color:var(--muted)}
 .field{display:block;margin:0 0 16px}
 .field>span{display:block;font-weight:650;margin-bottom:6px;font-size:15px}
-input[type=text],textarea{width:100%;min-height:48px;padding:11px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--raised)}
+input[type=text],input[type=date],input[type=search],textarea{width:100%;min-height:48px;padding:11px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--raised)}
 textarea{resize:vertical;line-height:1.4}
 
 /* cards */
@@ -119,6 +121,29 @@ textarea{resize:vertical;line-height:1.4}
 a.btn{text-decoration:none}
 .check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0 0 16px;font-weight:600}
 .check input{width:22px;height:22px;accent-color:var(--primary)}
+.card.p .tile{background:var(--ok-bg);color:var(--ok)}
+.card.p .addbtn{background:var(--ok);color:var(--ok-ink)}
+.search{position:relative;margin:4px 0 12px}
+.search input{padding-right:46px}
+.search svg{position:absolute;right:13px;top:13px;color:var(--muted);pointer-events:none}
+.pseg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border-radius:999px;padding:4px;margin-bottom:6px}
+.pseg button{min-height:40px;border:0;background:none;border-radius:999px;font-weight:700;color:var(--muted);font-size:14px}
+.pseg button.on{background:var(--ok);color:var(--ok-ink)}
+.phead{display:flex;justify-content:space-between;padding:10px 6px 6px;color:var(--ok);font-weight:700;font-size:14px}
+.prow{display:flex;align-items:center;border-top:1px solid var(--line)}
+.pmain{flex:1;min-width:0;text-align:left;background:none;border:0;padding:12px 6px;min-height:64px;color:inherit}
+.pt{display:block;font-weight:650;overflow-wrap:anywhere}
+.ps{display:block;font-size:14px;color:var(--muted)}
+.switch{position:relative;flex:none;width:76px;height:44px;border-radius:22px;border:0;background:var(--off);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:flex-end;padding:0 11px;margin-right:2px}
+.switch .knob{position:absolute;left:4px;top:4px;width:36px;height:36px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on{background:var(--ok);color:var(--ok-ink);justify-content:flex-start}
+.switch.on .knob{left:36px}
+.projhead{margin:0 0 16px}
+.dots.sync.ok{color:var(--ok)}
+.dots.sync.bad{color:var(--red)}
+.thead.i-cols{padding-right:88px}
+.linkbtn{background:none;border:0;color:var(--primary);font-weight:650;padding:10px 4px;min-height:44px;text-decoration:underline}
+.sheet h3{font-size:16px;margin:20px 0 6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -140,6 +165,10 @@ const ICON = {
   units:'<path d="M4 21V5h10v16M14 10h6v11M8 9h2M8 13h2M8 17h2M17 14h.01M17 18h.01"/>',
   incident:'<path d="M9 4h6v3H9zM7 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1M9 12h6M9 16h4"/>',
   gallery:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4-4 4 4 3-3 5 5M9 9h.01"/>',
+  sync:'<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>',
+  backup:'<path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/>',
   camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>'
 };
 const icon = (n,size=22) => '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[n]+'</svg>';
@@ -180,15 +209,16 @@ async function sdel(k){
 }
 
 /* ---------- state ---------- */
+let jobs = {projects:[]};
 let proj = {buildings:[]};
 let prefs = {prepared:''};
-const state = {view:'main', sel:{b:null,u:null}, edit:null, sheet:null};
+const state = {view:'projects', sel:{p:null,b:null,u:null}, edit:null, sheet:null, ui:{q:'',pf:'all'}};
 const photoCache = {}, photoLoading = {};
 const curB = () => proj.buildings.find(b=>b.id===state.sel.b) || null;
 const curU = () => { const b = curB(); return b ? (b.units.find(u=>u.id===state.sel.u)||null) : null; };
 let saveT = null;
 function persist(){ clearTimeout(saveT); saveT = setTimeout(saveNow,300); }
-async function saveNow(){ clearTimeout(saveT); await sset('proj:main', JSON.stringify(proj)); }
+async function saveNow(){ clearTimeout(saveT); await sset('proj:main', JSON.stringify(jobs)); }
 function fixSel(){
   if(!curB()) state.sel.b = proj.buildings.length ? proj.buildings[0].id : null;
   const b = curB();
@@ -225,9 +255,77 @@ function deletePhoto(pid){ delete photoCache[pid]; sdel('photo:'+pid); }
 const root = document.getElementById('app');
 function render(reset){
   const y = window.scrollY;
-  root.innerHTML = state.view==='incident' ? renderIncident() : renderMain();
+  root.innerHTML = state.view==='incident' ? renderIncident() : (state.view==='projects' ? renderProjects() : renderMain());
   window.scrollTo(0, reset ? 0 : y);
   renderSheet(); hydratePhotos();
+}
+function fmtD(d){
+  if(!d) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d); if(!m) return '';
+  return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+}
+function isSynced(i){ return (i.synced||0) > 0 && i.synced >= (i.modified||0); }
+function markSynced(at){
+  jobs.projects.forEach(pj=>pj.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>{ if((i.modified||0) <= at) i.synced = at; }))));
+  persist(); state.needsRender = true; toast('Synced: backed up');
+}
+function projCounts(p){ let i = 0; p.buildings.forEach(b=>b.units.forEach(u=>{ i += u.incidents.length; })); return {b:p.buildings.length,i:i}; }
+function backupNudge(){
+  if(!jobs.projects.length) return '';
+  const lb = prefs.lastBackup;
+  if(lb && Date.now()-lb <= 7*864e5) return '';
+  return '<p class="sub">'+(lb?'Last backup: '+esc(new Date(lb).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}))+'.':'No backup yet.')+' <button class="linkbtn" data-action="backup-open">Back up now</button></p>';
+}
+function renderProjects(){
+  const q = (state.ui.q||'').trim().toLowerCase(), f = state.ui.pf;
+  let list = jobs.projects.slice().sort((a,b)=>(b.created||0)-(a.created||0));
+  if(f==='wip') list = list.filter(p=>!p.done); else if(f==='done') list = list.filter(p=>p.done);
+  if(q) list = list.filter(p=>(p.address+' '+(p.initials||'')).toLowerCase().indexOf(q)>=0);
+  let h = '<header class="topbar"><div class="brand">Defect inspection</div><button class="iconbtn" style="margin-left:auto" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">';
+  h += '<section class="card p"><div class="chead"><span class="tile">'+icon('folder')+'</span><h2>Projects</h2><button class="addbtn" data-action="new-project">'+icon('plus',16)+'<span>Project</span></button></div>'
+    +'<p class="sub" style="margin:-2px 2px 12px">All your jobs are listed here.</p>'
+    +'<div class="search"><input type="search" data-search value="'+esc(state.ui.q)+'" placeholder="Search by address" aria-label="Search projects" autocomplete="off">'+icon('search',20)+'</div>'
+    +'<div class="pseg" role="group" aria-label="Filter projects">'
+    +[['all','All'],['wip','WIP'],['done','Done']].map(x=>'<button class="'+(f===x[0]?'on':'')+'" data-action="pfilter" data-val="'+x[0]+'" aria-pressed="'+(f===x[0])+'">'+x[1]+'</button>').join('')+'</div>';
+  if(!jobs.projects.length){
+    h += '<p class="empty">No projects yet. Tap + Project and enter the job address to start.</p>';
+  } else if(!list.length){
+    h += '<p class="empty">No projects match.</p>';
+  } else {
+    h += '<div class="phead"><span>Projects</span><span style="margin-right:56px">Done</span></div>'
+      + list.map(p=>{
+        const c = projCounts(p);
+        const sub = [fmtD(p.date),p.initials].filter(Boolean).join(', ');
+        return '<div class="prow"><button class="pmain" data-action="open-project" data-id="'+p.id+'"><span class="pt">'+esc(p.address)+'</span>'
+          +'<span class="ps">'+(sub?esc(sub)+'. ':'')+c.b+' building'+(c.b===1?'':'s')+', '+c.i+' incident'+(c.i===1?'':'s')+'</span></button>'
+          +'<button class="switch'+(p.done?' on':'')+'" role="switch" aria-checked="'+(!!p.done)+'" data-action="toggle-done" data-id="'+p.id+'" aria-label="Done: '+esc(p.address)+'"><span class="knob"></span><span>'+(p.done?'ON':'OFF')+'</span></button>'
+          +'<button class="dots" style="color:var(--muted)" data-action="menu" data-kind="project" data-id="'+p.id+'" aria-label="Options for '+esc(p.address)+'">'+icon('dots')+'</button></div>';
+      }).join('');
+  }
+  h += '</section>'+backupNudge();
+  if(!hasStore) h += '<p class="sub">Saving is off in this view, so your records last only until you close the page.</p>';
+  return h+'</main>';
+}
+function openProject(id){
+  const p = jobs.projects.find(x=>x.id===id); if(!p) return;
+  proj = p; state.sel = {p:id,b:null,u:null}; fixSel(); state.view = 'main'; render(true);
+}
+async function closeProject(){
+  await saveNow();
+  proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.view = 'projects'; render(true);
+}
+function saveProject(){
+  const s = state.sheet, address = (s.address||'').trim();
+  if(!address){ toast('Enter the job address.'); return; }
+  const initials = (s.initials||'').trim().toUpperCase().slice(0,10);
+  prefs.initials = initials; sset('prefs:main', JSON.stringify(prefs));
+  if(s.id){
+    const p = jobs.projects.find(x=>x.id===s.id); p.address = address; p.date = s.date||''; p.initials = initials;
+    state.sheet = null; persist(); render(); toast('Project updated');
+  } else {
+    const np = {id:uid(),address:address,date:s.date||'',initials:initials,done:false,created:Date.now(),buildings:[]};
+    jobs.projects.push(np); state.sheet = null; persist(); openProject(np.id);
+  }
 }
 function card(kind,title,ic,btnLabel,btnAction,inner){
   return '<section class="card '+kind+'"><div class="chead"><span class="tile">'+icon(ic)+'</span><h2>'+title+'</h2>'
@@ -235,8 +333,10 @@ function card(kind,title,ic,btnLabel,btnAction,inner){
 }
 function renderMain(){
   const b = curB(), u = curU();
-  let h = '<header class="topbar"><div class="brand">Defect inspection</div>'
-    +(b?'<button class="btn ghost small" data-action="report-open" data-id="'+b.id+'">Word report</button>':'')+'</header><main class="pad">';
+  let h = '<header class="topbar"><button class="back" data-action="close-project">'+icon('back')+'<span>Projects</span></button>'
+    +(b?'<button class="btn ghost small" data-action="report-open" data-id="'+b.id+'">Word report</button>':'')
+    +'<button class="iconbtn" style="margin-left:'+(b?'4px':'auto')+'" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">'
+    +'<div class="projhead"><h1>'+esc(proj.address||'Project')+'</h1><p class="sub">'+esc([fmtD(proj.date),proj.initials].filter(Boolean).join(', '))+'</p></div>';
 
   // buildings
   let inner;
@@ -268,7 +368,9 @@ function renderMain(){
       inner = '<div class="thead i-cols"><span>Area and description</span><span style="text-align:center">Photos</span></div>'
         + u.incidents.map(x=>'<div class="trow i"><button class="rmain i-cols" data-action="open-incident" data-id="'+x.id+'">'
           +'<span><span class="main">'+esc(x.area||'No area')+'</span>'+(x.description?'<span class="desc" style="display:-webkit-box">'+esc(x.description)+'</span>':'')+'</span>'
-          +'<span class="c-n">'+x.photos.length+'</span></button></div>').join('');
+          +'<span class="c-n">'+x.photos.length+'</span></button>'
+          +'<button class="dots sync '+(isSynced(x)?'ok':'bad')+'" data-action="sync-icon" data-id="'+x.id+'" aria-label="'+(isSynced(x)?'Backed up':'Not backed up. Tap to back up now')+'">'+icon('sync')+'</button>'
+          +'<button class="dots" style="color:var(--muted)" data-action="menu" data-kind="incident" data-id="'+x.id+'" aria-label="Options for '+esc(x.area||'incident')+'">'+icon('dots')+'</button></div>').join('');
     }
     h += card('i','Incidents','incident','Incident','add-incident',inner);
   }
@@ -309,13 +411,20 @@ function renderSheet(){
       +'<div class="sheethead"><h2 id="st">'+esc(s.title)+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<label class="field"><span>'+label+'</span><input type="text" id="nameInput" value="'+esc(s.value)+'" placeholder="'+ph+'" autocomplete="off"></label>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="save-name">Save</button></div></div>';
+  } else if(s.type==='project'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">'+(s.id?'Edit project':'New project')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<label class="field"><span>Job address</span><input type="text" id="projAddr" data-p="address" value="'+esc(s.address)+'" placeholder="e.g. 22-28 Zetland Ave, Zetland" autocomplete="off"></label>'
+      +'<label class="field"><span>Inspection date</span><input type="date" data-p="date" value="'+esc(s.date)+'"></label>'
+      +'<label class="field"><span>Your initials (optional)</span><input type="text" data-p="initials" maxlength="10" value="'+esc(s.initials)+'" autocapitalize="characters" autocomplete="off"></label>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="save-project">'+(s.id?'Save':'Create project')+'</button></div></div>';
   } else if(s.type==='menu'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">'+esc(s.name)+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
-      +'<div class="menulist">'+(s.kind==='building'?'<button class="btn ghost" data-action="report-open" data-id="'+s.id+'">Create Word report</button>':'')+'<button class="btn ghost" data-action="rename">Rename</button><button class="btn danger" data-action="delete-item">Delete '+s.kind+'</button></div></div>';
+      +'<div class="menulist">'+(s.kind==='project'?'<button class="btn ghost" data-action="edit-project">Edit details</button>':'')+(s.kind==='incident'?'<button class="btn ghost" data-action="edit-incident">Edit</button><button class="btn ghost" data-action="sync-now">Sync (back up now)</button>':'')+(s.kind==='building'?'<button class="btn ghost" data-action="report-open" data-id="'+s.id+'">Create Word report</button>':'')+''+(s.kind==='project'||s.kind==='incident'?'':'<button class="btn ghost" data-action="rename">Rename</button>')+'<button class="btn danger" data-action="delete-item">Delete '+s.kind+'</button></div></div>';
   } else if(s.type==='confirm'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">'+esc(s.title)+'</h2>'
-      +'<p class="sub" style="margin:8px 0 18px">'+esc(s.body)+'</p><div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Keep it</button>'
+      +'<p class="sub" style="margin:8px 0 18px">'+esc(s.body)+'</p><div class="sheetactions"><button class="btn ghost" data-action="close-sheet">'+esc(s.noLabel||'Keep it')+'</button>'
       +'<button class="btn danger" data-action="confirm-yes">'+esc(s.yesLabel)+'</button></div></div>';
   } else if(s.type==='report'){
     const b = proj.buildings.find(x=>x.id===s.id);
@@ -326,12 +435,26 @@ function renderSheet(){
       +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
       +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="report-make">Create Word file</button></div></div>';
+  } else if(s.type==='backup'){
+    let nPr = jobs.projects.length, nB = 0, nI = 0, nP = 0;
+    jobs.projects.forEach(pj=>pj.buildings.forEach(b=>{ nB++; b.units.forEach(u=>u.incidents.forEach(i=>{ nI++; nP += i.photos.length; })); }));
+    const lb = prefs.lastBackup;
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">Backup and restore</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<p class="sub">Your records are stored only on this phone. A backup file saves everything, photos included, so you can restore it if the app is cleared or you move to a new phone.</p>'
+      +'<p style="margin:14px 0 4px;font-weight:600">On this phone: '+nPr+' project'+(nPr===1?'':'s')+', '+nB+' building'+(nB===1?'':'s')+', '+nI+' incident'+(nI===1?'':'s')+', '+nP+' photo'+(nP===1?'':'s')+'</p>'
+      +'<p class="sub" style="margin-bottom:16px">Last backup: '+(lb?esc(new Date(lb).toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})):'never')+'</p>'
+      +'<button class="btn block" data-action="backup-make">Create backup file</button>'
+      +'<h3>Restore from a backup</h3><p class="sub" style="margin-bottom:12px">Choose a backup file. This replaces everything currently in the app.</p>'
+      +'<button class="btn ghost block" data-action="restore-pick">Choose backup file</button>'
+      +'<input type="file" id="restoreInput" class="vh" accept=".json,application/json" tabindex="-1"></div>';
   } else if(s.type==='working'){
-    h = '<div class="scrim"></div><div class="sheet" role="status"><h2>Building your report</h2><p class="sub" style="margin-top:8px">Adding incidents and photos. This can take a few seconds.</p></div>';
+    h = '<div class="scrim"></div><div class="sheet" role="status"><h2>'+esc(s.title||'Building your report')+'</h2><p class="sub" style="margin-top:8px">'+esc(s.body||'Adding incidents and photos. This can take a few seconds.')+'</p></div>';
   } else if(s.type==='ready'){
-    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st"><h2 id="st">Report ready</h2>'
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st"><h2 id="st">'+esc(s.title||'Report ready')+'</h2>'
       +'<p class="sub" style="margin:8px 0 16px;overflow-wrap:anywhere">'+esc(s.name)+'</p>'
-      +'<a class="btn block" href="'+s.url+'" download="'+esc(s.name)+'">Download Word file</a>'
+      +(s.note?'<p class="sub" style="margin-bottom:14px">'+esc(s.note)+'</p>':'')
+      +'<a class="btn block" href="'+s.url+'" download="'+esc(s.name)+'"'+(s.syncAt?' data-action="mark-synced"':'')+'>'+esc(s.btnLabel||'Download Word file')+'</a>'
       +(typeof navigator.canShare==='function'?'<button class="btn ghost block" style="margin-top:10px" data-action="share-report">Share or save to Files</button>':'')
       +'<button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Close</button></div>';
   } else if(s.type==='photo'){
@@ -339,10 +462,11 @@ function renderSheet(){
       +'<img class="bigphoto" data-photo="'+s.id+'" alt="Incident photo"><button class="btn ghost block" data-action="close-sheet">Close</button></div>';
   }
   el.innerHTML = h; hydratePhotos();
+  const pa = document.getElementById('projAddr'); if(pa && !s.address){ pa.focus(); }
   const inp = document.getElementById('nameInput'); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
 }
-const closeSheet = () => { if(state.sheet && state.sheet.url) URL.revokeObjectURL(state.sheet.url); state.sheet = null; renderSheet(); };
-function ask(title,body,yesLabel,fn){ state.sheet = {type:'confirm',title,body,yesLabel,fn}; renderSheet(); }
+const closeSheet = () => { if(state.sheet && state.sheet.url) URL.revokeObjectURL(state.sheet.url); state.sheet = null; renderSheet(); if(state.needsRender){ state.needsRender = false; render(); } };
+function ask(title,body,yesLabel,fn,noLabel){ state.sheet = {type:'confirm',title,body,yesLabel,fn,noLabel}; renderSheet(); }
 
 function saveName(){
   const s = state.sheet, v = (document.getElementById('nameInput').value||'').trim();
@@ -371,6 +495,8 @@ function saveIncident(){
   const e = state.edit, d = e.draft, u = curU();
   if(!d.area.trim() && !d.description.trim()){ toast('Add an area or a description.'); return; }
   const rec = {id:e.id||uid(),area:d.area.trim(),description:d.description.trim(),causes:d.causes.trim(),breach:d.breach.trim(),scope:d.scope.trim(),photos:d.photos.slice(),created:d.created||Date.now()};
+  const prev = u.incidents.find(i=>i.id===rec.id);
+  rec.modified = Date.now(); rec.synced = prev ? (prev.synced||0) : 0;
   const idx = u.incidents.findIndex(i=>i.id===rec.id);
   if(idx>=0) u.incidents[idx] = rec; else u.incidents.push(rec);
   e.removed.forEach(deletePhoto);
@@ -429,7 +555,10 @@ function makeDocx(JSZipCtor,d){
 
   body += P('Title','Defect inspection report');
   body += wPara(wRuns(d.building.name,'<w:b/><w:color w:val="2F7A80"/><w:sz w:val="30"/><w:szCs w:val="30"/>'),'<w:spacing w:after="240"/>');
-  var kv = kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
+  var kv = '';
+  if(d.project && d.project.address) kv += kvRow('Property',d.project.address);
+  if(d.project && d.project.dateText) kv += kvRow('Inspection date',d.project.dateText);
+  kv += kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
   if(d.prepared) kv += kvRow('Prepared by',d.prepared);
   kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc));
   body += wTable([2300,7338],kv);
@@ -524,7 +653,7 @@ async function prepareReport(id,prepared,withPhotos){
     }
     units.push({name:u.name,incidents:incs});
   }
-  return {building:{ref:b.ref,name:b.name},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
+  return {building:{ref:b.ref,name:b.name},project:{address:proj.address||'',dateText:fmtD(proj.date)},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
 }
 let generating = false;
 async function runReport(){
@@ -545,11 +674,91 @@ async function runReport(){
   generating = false;
 }
 
+/* ---------- Backup and restore ---------- */
+function allPhotoIds(){
+  const ids = [];
+  jobs.projects.forEach(pj=>pj.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>i.photos.forEach(p=>ids.push(p))))));
+  return ids;
+}
+async function makeBackup(){
+  if(generating) return; generating = true;
+  const startedAt = Date.now();
+  state.sheet = {type:'working',title:'Creating backup',body:'Gathering your records and photos. This can take a few seconds.'}; renderSheet();
+  try{
+    const photos = {};
+    for(const id of allPhotoIds()){
+      const d = photoCache[id] || await sget('photo:'+id);
+      if(d) photos[id] = d;
+    }
+    const data = {app:'defect-app',version:2,exported:new Date().toISOString(),root:jobs,photos:photos};
+    const blob = new Blob([JSON.stringify(data)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    prefs.lastBackup = Date.now(); sset('prefs:main', JSON.stringify(prefs));
+    state.sheet = {type:'ready',url:url,blob:blob,name:'defect-backup-'+isoToday()+'.json',title:'Backup ready',btnLabel:'Download backup file',syncAt:startedAt,note:'Download or share this file and keep it somewhere safe, like Google Drive. Your incidents turn green once you do.'};
+    render();
+  }catch(err){ console.error(err); state.sheet = null; renderSheet(); toast("Couldn't create the backup. Try again."); }
+  generating = false;
+}
+function parseBackup(o){
+  const idOk = v => typeof v==='string' && /^[A-Za-z0-9]{1,40}$/.test(v);
+  const str = v => typeof v==='string' ? v : '';
+  if(!o || o.app!=='defect-app') throw new Error('not a backup');
+  let projects;
+  if(o.root && Array.isArray(o.root.projects)) projects = o.root.projects;
+  else if(o.proj && Array.isArray(o.proj.buildings)) projects = [{id:'imported'+Date.now().toString(36),address:'Imported records',date:'',initials:'',done:false,created:Date.now(),buildings:o.proj.buildings}];
+  else throw new Error('not a backup');
+  const photos = {}; let nPh = 0, nInc = 0, nB = 0;
+  const outProjects = projects.map(pj=>{
+    if(!pj || !idOk(pj.id) || !Array.isArray(pj.buildings)) throw new Error('bad project');
+    const buildings = pj.buildings.map(b=>{
+      if(!b || !idOk(b.id) || !Array.isArray(b.units)) throw new Error('bad building');
+      return {id:b.id,ref:Number(b.ref)||1,name:str(b.name),units:b.units.map(u=>{
+        if(!u || !idOk(u.id) || !Array.isArray(u.incidents)) throw new Error('bad unit');
+        return {id:u.id,name:str(u.name),incidents:u.incidents.map(i=>{
+          if(!i || !idOk(i.id)) throw new Error('bad incident');
+          const ph = (Array.isArray(i.photos)?i.photos:[]).filter(p=>idOk(p) && o.photos && typeof o.photos[p]==='string' && o.photos[p].indexOf('data:image/')===0);
+          ph.forEach(p=>{ photos[p] = o.photos[p]; nPh++; });
+          nInc++;
+          return {id:i.id,area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0,synced:Date.now()};
+        })};
+      })};
+    });
+    nB += buildings.length;
+    return {id:pj.id,address:str(pj.address),date:/^\d{4}-\d{2}-\d{2}$/.test(pj.date||'')?pj.date:'',initials:str(pj.initials).slice(0,10),done:!!pj.done,created:Number(pj.created)||Date.now(),buildings:buildings};
+  });
+  return {root:{projects:outProjects},photos:photos,counts:{projects:outProjects.length,buildings:nB,incidents:nInc,photos:nPh},exported:o.exported};
+}
+async function readBackup(file){
+  let parsed;
+  try{ parsed = parseBackup(JSON.parse(await file.text())); }
+  catch(err){ toast("That file isn't a backup from this app."); return; }
+  const c = parsed.counts;
+  const when = parsed.exported ? new Date(parsed.exported).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : 'unknown date';
+  ask('Replace everything with this backup?','Backup from '+when+': '+c.projects+' project'+(c.projects===1?'':'s')+', '+c.buildings+' building'+(c.buildings===1?'':'s')+', '+c.incidents+' incident'+(c.incidents===1?'':'s')+', '+c.photos+' photo'+(c.photos===1?'':'s')+'. Everything now in the app will be replaced.','Replace',()=>doRestore(parsed),'Cancel');
+}
+async function doRestore(parsed){
+  state.sheet = {type:'working',title:'Restoring',body:'Putting your records and photos back. Please keep this open.'}; renderSheet();
+  try{
+    for(const id of allPhotoIds()){ delete photoCache[id]; await sdel('photo:'+id); }
+    for(const id of Object.keys(parsed.photos)){ photoCache[id] = parsed.photos[id]; await sset('photo:'+id, parsed.photos[id]); }
+    jobs = parsed.root; proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.view = 'projects';
+    await saveNow();
+    state.sheet = null; render(true); toast('Backup restored');
+  }catch(err){ console.error(err); state.sheet = null; render(true); toast("Couldn't restore the backup."); }
+}
+
 /* ---------- events ---------- */
 document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
+    case 'new-project': state.sheet = {type:'project',id:null,address:'',date:isoToday(),initials:prefs.initials||''}; renderSheet(); break;
+    case 'edit-project': { const p = jobs.projects.find(x=>x.id===state.sheet.id); state.sheet = {type:'project',id:p.id,address:p.address,date:p.date||'',initials:p.initials||''}; renderSheet(); break; }
+    case 'save-project': saveProject(); break;
+    case 'open-project': openProject(t.dataset.id); break;
+    case 'close-project': closeProject(); break;
+    case 'pfilter': state.ui.pf = t.dataset.val; render(); break;
+    case 'toggle-done': { const p = jobs.projects.find(x=>x.id===t.dataset.id); p.done = !p.done; persist(); render(); toast(p.done?'Marked as done':'Moved back to WIP'); break; }
     case 'sel-b': if(state.sel.b!==t.dataset.id){ state.sel.b = t.dataset.id; state.sel.u = null; fixSel(); } render(); break;
     case 'sel-u': state.sel.u = t.dataset.id; render(); break;
     case 'add-b': state.sheet = {type:'name',kind:'building',id:null,title:'Add building',value:''}; renderSheet(); break;
@@ -558,21 +767,42 @@ document.addEventListener('click', ev=>{
     case 'open-incident': openIncident(t.dataset.id); break;
     case 'menu': {
       const kind = t.dataset.kind, id = t.dataset.id;
-      const item = kind==='building' ? proj.buildings.find(b=>b.id===id) : curB().units.find(u=>u.id===id);
-      state.sheet = {type:'menu',kind,id,name:item.name}; renderSheet(); break; }
+      const item = kind==='project' ? jobs.projects.find(x=>x.id===id) : kind==='incident' ? curU().incidents.find(x=>x.id===id) : (kind==='building' ? proj.buildings.find(b=>b.id===id) : curB().units.find(u=>u.id===id));
+      state.sheet = {type:'menu',kind,id,name:item.name||item.address||item.area||'Incident'}; renderSheet(); break; }
     case 'rename': {
       const s = state.sheet; state.sheet = {type:'name',kind:s.kind,id:s.id,title:'Rename '+s.kind,value:s.name}; renderSheet(); break; }
     case 'save-name': saveName(); break;
     case 'report-open': state.sheet = {type:'report',id:t.dataset.id,prepared:prefs.prepared||'',photos:true}; renderSheet(); break;
     case 'report-make': runReport(); break;
+    case 'backup-open': state.sheet = {type:'backup'}; renderSheet(); break;
+    case 'backup-make': makeBackup(); break;
+    case 'restore-pick': { const i = document.getElementById('restoreInput'); if(i) i.click(); break; }
+    case 'mark-synced': if(state.sheet && state.sheet.syncAt) markSynced(state.sheet.syncAt); break;
+    case 'sync-icon': {
+      const inc = curU().incidents.find(x=>x.id===t.dataset.id);
+      if(inc && isSynced(inc)) toast('Already backed up'); else makeBackup(); break; }
+    case 'sync-now': state.sheet = null; renderSheet(); makeBackup(); break;
+    case 'edit-incident': { const id = state.sheet.id; state.sheet = null; renderSheet(); openIncident(id); break; }
     case 'share-report': {
       const s = state.sheet, file = new File([s.blob], s.name, {type:s.blob.type});
-      if(navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({files:[file],title:s.name}).catch(()=>{}); }
+      if(navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({files:[file],title:s.name}).then(()=>{ if(s.syncAt) markSynced(s.syncAt); }).catch(()=>{}); }
       else toast("Sharing isn't available here. Try the download button.");
       break; }
     case 'delete-item': {
       const s = state.sheet;
-      ask('Delete '+s.kind+'?', s.kind==='building' ? 'All units, incidents and photos in "'+s.name+'" will be removed. This cannot be undone.' : 'All incidents and photos in "'+s.name+'" will be removed. This cannot be undone.', 'Delete '+s.kind, ()=>{
+      ask('Delete '+s.kind+'?', s.kind==='incident' ? 'Its details and photos will be removed. This cannot be undone.' : s.kind==='project' ? 'All buildings, units, incidents and photos in "'+s.name+'" will be removed. This cannot be undone.' : s.kind==='building' ? 'All units, incidents and photos in "'+s.name+'" will be removed. This cannot be undone.' : 'All incidents and photos in "'+s.name+'" will be removed. This cannot be undone.', 'Delete '+s.kind, ()=>{
+        if(s.kind==='incident'){
+          const un = curU(), inc = un.incidents.find(x=>x.id===s.id);
+          if(inc) inc.photos.forEach(deletePhoto);
+          un.incidents = un.incidents.filter(x=>x.id!==s.id);
+          persist(); render(); toast('Deleted'); return;
+        }
+        if(s.kind==='project'){
+          const pj = jobs.projects.find(x=>x.id===s.id);
+          pj.buildings.forEach(b=>b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto)));
+          jobs.projects = jobs.projects.filter(x=>x.id!==s.id);
+          persist(); render(); toast('Deleted'); return;
+        }
         if(s.kind==='building'){
           const b = proj.buildings.find(x=>x.id===s.id);
           b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto));
@@ -612,26 +842,48 @@ document.addEventListener('click', ev=>{
 document.addEventListener('input', ev=>{
   const t = ev.target;
   if(t.dataset.f && state.edit) state.edit.draft[t.dataset.f] = t.value;
+  else if(t.dataset.p && state.sheet && state.sheet.type==='project') state.sheet[t.dataset.p] = t.value;
+  else if(t.dataset.search !== undefined){
+    state.ui.q = t.value; render();
+    const el = document.querySelector('[data-search]'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
   else if(t.dataset.r==='prepared' && state.sheet) state.sheet.prepared = t.value;
 });
 document.addEventListener('change', ev=>{
   const t = ev.target;
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
   if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files); }
+  if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
 document.addEventListener('keydown', ev=>{
   if(ev.key==='Escape' && state.sheet) closeSheet();
   if(ev.key==='Enter' && state.sheet && state.sheet.type==='name' && ev.target.id==='nameInput'){ ev.preventDefault(); saveName(); }
+  if(ev.key==='Enter' && state.sheet && state.sheet.type==='project' && ev.target.id==='projAddr'){ ev.preventDefault(); saveProject(); }
 });
 
 (async function init(){
   db = await openDb(); hasStore = !!db;
   if(navigator.storage && navigator.storage.persist){ try{ navigator.storage.persist(); }catch(e){} }
-  if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+  if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+    try{
+      let hadCtl = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(hadCtl && state.view==='projects' && !state.sheet) location.reload(); hadCtl = true; });
+      navigator.serviceWorker.register('sw.js');
+    }catch(e){}
+  }
   const v = await sget('proj:main');
-  if(v){ try{ proj = JSON.parse(v); }catch(e){} }
+  if(v){
+    try{
+      const o = JSON.parse(v);
+      if(o && Array.isArray(o.projects)) jobs = o;
+      else if(o && Array.isArray(o.buildings)){
+        jobs = {projects:[{id:uid(),address:'My first project',date:'',initials:'',done:false,created:Date.now(),buildings:o.buildings}]};
+        persist();
+      }
+    }catch(e){}
+  }
   const pv = await sget('prefs:main'); if(pv){ try{ prefs = Object.assign(prefs, JSON.parse(pv)); }catch(e){} }
-  fixSel(); render(true);
+  render(true);
 })();
 </script>
 </body>
