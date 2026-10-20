@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Defect inspection</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2F7A80">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#E4EAEC; --surface:#F8FAFA; --raised:#FFFFFF; --ink:#1B2A34; --muted:#52636D; --line:#C6D0D5;
+  --primary:#1F5FA6; --primary-ink:#FFFFFF; --hazard:#B3212F;
+  --teal:#2F7A80; --teal-ink:#FFFFFF; --teal-bg:#DCEEEF;
+  --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#FBEBCB;
+  --red:#C93A33; --red-ink:#FFFFFF; --red-bg:#F8DAD7;
+  --cam:#2A2326;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg:#0F161A; --surface:#182229; --raised:#1F2B33; --ink:#E7EDF0; --muted:#9DACB5; --line:#33444E;
+    --primary:#6FAEEA; --primary-ink:#0D1A26; --hazard:#FF8C97;
+    --teal:#4FA6AD; --teal-ink:#08181A; --teal-bg:#173A3D;
+    --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#443211;
+    --red:#E5645D; --red-ink:#230806; --red-bg:#4A1D1A;
+    --cam:#3A3236;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Avenir Next","Segoe UI","Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+h1,h2,p{margin:0}
+h1{font-size:22px;font-weight:750;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:700;letter-spacing:-.005em}
+.app{max-width:720px;margin:0 auto;min-height:100vh;background:var(--surface);padding-bottom:24px}
+.sub{color:var(--muted);font-size:15px}
+.pad{padding:16px}
+
+.topbar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding:6px 8px;display:flex;align-items:center;min-height:52px}
+.brand{font-weight:750;padding:0 8px}
+.back{display:flex;align-items:center;gap:2px;background:none;border:0;color:var(--primary);padding:10px 10px 10px 4px;font-weight:600;min-height:44px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:10px;border:1.5px solid var(--primary);background:var(--primary);color:var(--primary-ink);font-weight:650}
+.btn.ghost{background:transparent;color:var(--primary)}
+.btn.danger{background:transparent;border-color:var(--hazard);color:var(--hazard)}
+.btn.block{width:100%}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;border:0;background:transparent;color:var(--muted)}
+.field{display:block;margin:0 0 16px}
+.field>span{display:block;font-weight:650;margin-bottom:6px;font-size:15px}
+input[type=text],textarea{width:100%;min-height:48px;padding:11px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--raised)}
+textarea{resize:vertical;line-height:1.4}
+
+/* cards */
+.card{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:14px 12px 8px;margin-bottom:14px}
+.chead{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:0 2px}
+.chead h2{flex:1}
+.tile{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.card.b .tile{background:var(--teal-bg);color:var(--teal)}
+.card.u .tile{background:var(--amber-bg);color:#8A5A00}
+.card.i .tile{background:var(--red-bg);color:var(--red)}
+@media (prefers-color-scheme: dark){ .card.u .tile{color:var(--amber)} }
+.addbtn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:0;font-weight:650;font-size:15px}
+.card.b .addbtn{background:var(--teal);color:var(--teal-ink)}
+.card.u .addbtn{background:var(--amber);color:var(--amber-ink)}
+.card.i .addbtn{background:var(--red);color:var(--red-ink)}
+.thead{display:grid;gap:8px;padding:6px 44px 6px 10px;color:var(--muted);font-size:14px}
+.trow{display:flex;align-items:stretch;border-radius:8px}
+.rmain{flex:1;min-width:0;display:grid;gap:8px;align-items:center;text-align:left;background:none;border:0;padding:12px 10px;min-height:52px;color:inherit;border-radius:8px}
+.dots{width:44px;border:0;background:none;color:inherit;display:flex;align-items:center;justify-content:center;border-radius:8px;flex:none}
+.b-cols{grid-template-columns:34px minmax(0,1fr) 56px}
+.u-cols{grid-template-columns:minmax(0,1fr) 72px}
+.i-cols{grid-template-columns:minmax(0,1fr) 40px}
+.trow:not(.sel){border-top:1px solid var(--line);border-radius:0}
+.trow.sel.b{background:var(--teal);color:var(--teal-ink)}
+.trow.sel.u{background:var(--amber);color:var(--amber-ink)}
+.trow.sel + .trow{border-top-color:transparent}
+.c-n{text-align:center;font-variant-numeric:tabular-nums}
+.rmain .main{font-weight:650;overflow-wrap:anywhere}
+.rmain .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;color:var(--muted)}
+.empty{color:var(--muted);padding:10px 4px 14px;font-size:15px}
+
+/* incident form */
+.ctx{margin-bottom:18px;display:grid;gap:4px}
+.ctx b{font-weight:700}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}
+.photo{position:relative}
+.photo>button.open{padding:0;border:0;background:none;display:block;border-radius:8px}
+.photo img{width:88px;height:88px;object-fit:cover;border-radius:8px;background:var(--bg);border:1px solid var(--line);display:block}
+.photo .rm{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:var(--surface);display:flex;align-items:center;justify-content:center;padding:0}
+.bottombar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+.circ{width:56px;height:56px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;flex:none}
+.circ.gal{background:var(--red);color:var(--red-ink)}
+.circ.cam{background:var(--cam);color:#fff}
+.bottombar .btn{margin-left:auto}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(10,20,26,.55);z-index:20}
+.sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(720px,100%);max-height:92vh;overflow:auto;background:var(--surface);border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));z-index:21;animation:up .18s ease-out}
+@keyframes up{from{transform:translate(-50%,24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.sheethead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheetactions{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.sheetactions .btn{flex:1 1 140px}
+.menulist{display:grid;gap:8px}
+.menulist .btn{justify-content:flex-start}
+.bigphoto{width:100%;max-height:70vh;object-fit:contain;border-radius:10px;background:var(--bg);display:block;margin-bottom:12px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));max-width:min(92vw,520px);background:var(--ink);color:var(--surface);padding:11px 16px;border-radius:10px;font-size:15px;z-index:30;opacity:0;pointer-events:none;transition:opacity .15s}
+#toast.show{opacity:1}
+.small{min-height:40px;padding:0 14px;font-size:15px;margin-left:auto}
+a.btn{text-decoration:none}
+.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0 0 16px;font-weight:600}
+.check input{width:22px;height:22px;accent-color:var(--primary)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div id="sheet"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="jszip.min.js"></script>
+<script>
+const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON = {
+  back:'<path d="M15 5l-7 7 7 7"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  dots:'<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+  building:'<path d="M5 21V9l7-5 7 5v12M9 21v-5h6v5M9 11h.01M15 11h.01"/>',
+  units:'<path d="M4 21V5h10v16M14 10h6v11M8 9h2M8 13h2M8 17h2M17 14h.01M17 18h.01"/>',
+  incident:'<path d="M9 4h6v3H9zM7 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1M9 12h6M9 16h4"/>',
+  gallery:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4-4 4 4 3-3 5 5M9 9h.01"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>'
+};
+const icon = (n,size=22) => '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[n]+'</svg>';
+let toastT = null;
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'),2800); }
+
+/* ---------- storage (IndexedDB on this device) ---------- */
+const mem = new Map();
+let db = null, hasStore = false;
+function openDb(){
+  return new Promise(res=>{
+    try{
+      const r = indexedDB.open('defect-app',1);
+      r.onupgradeneeded = ()=>{ r.result.createObjectStore('kv'); };
+      r.onsuccess = ()=>res(r.result);
+      r.onerror = ()=>res(null);
+      r.onblocked = ()=>res(null);
+    }catch(e){ res(null); }
+  });
+}
+function tx(mode,fn){
+  return new Promise((res,rej)=>{
+    const t = db.transaction('kv',mode), req = fn(t.objectStore('kv'));
+    t.oncomplete = ()=>res(req ? req.result : undefined);
+    t.onerror = ()=>rej(t.error); t.onabort = ()=>rej(t.error);
+  });
+}
+async function sget(k){
+  if(db){ try{ const v = await tx('readonly',s=>s.get(k)); return v==null ? null : v; }catch(e){ return null; } }
+  return mem.has(k) ? mem.get(k) : null;
+}
+async function sset(k,v){
+  if(db){ try{ await tx('readwrite',s=>s.put(v,k)); }catch(e){ console.error(e); toast("Couldn't save. Your latest change may be lost."); } }
+  else mem.set(k,v);
+}
+async function sdel(k){
+  if(db){ try{ await tx('readwrite',s=>s.delete(k)); }catch(e){} } else mem.delete(k);
+}
+
+/* ---------- state ---------- */
+let proj = {buildings:[]};
+let prefs = {prepared:''};
+const state = {view:'main', sel:{b:null,u:null}, edit:null, sheet:null};
+const photoCache = {}, photoLoading = {};
+const curB = () => proj.buildings.find(b=>b.id===state.sel.b) || null;
+const curU = () => { const b = curB(); return b ? (b.units.find(u=>u.id===state.sel.u)||null) : null; };
+let saveT = null;
+function persist(){ clearTimeout(saveT); saveT = setTimeout(saveNow,300); }
+async function saveNow(){ clearTimeout(saveT); await sset('proj:main', JSON.stringify(proj)); }
+function fixSel(){
+  if(!curB()) state.sel.b = proj.buildings.length ? proj.buildings[0].id : null;
+  const b = curB();
+  if(!b) state.sel.u = null; else if(!curU()) state.sel.u = b.units.length ? b.units[0].id : null;
+}
+
+/* ---------- photos ---------- */
+function compress(file){
+  return new Promise((res,rej)=>{
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = ()=>{
+      const max = 1000; let w = img.width, h = img.height; const sc = Math.min(1,max/Math.max(w,h));
+      w = Math.round(w*sc); h = Math.round(h*sc);
+      const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',0.62));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+function hydratePhotos(){
+  document.querySelectorAll('img[data-photo]').forEach(img=>{
+    const id = img.dataset.photo;
+    if(photoCache[id]){ if(img.getAttribute('src')!==photoCache[id]) img.src = photoCache[id]; }
+    else if(!photoLoading[id]){
+      photoLoading[id] = true;
+      sget('photo:'+id).then(v=>{ photoLoading[id] = false; if(v){ photoCache[id] = v; document.querySelectorAll('img[data-photo="'+id+'"]').forEach(im=>{ im.src = v; }); } });
+    }
+  });
+}
+function deletePhoto(pid){ delete photoCache[pid]; sdel('photo:'+pid); }
+
+/* ---------- rendering ---------- */
+const root = document.getElementById('app');
+function render(reset){
+  const y = window.scrollY;
+  root.innerHTML = state.view==='incident' ? renderIncident() : renderMain();
+  window.scrollTo(0, reset ? 0 : y);
+  renderSheet(); hydratePhotos();
+}
+function card(kind,title,ic,btnLabel,btnAction,inner){
+  return '<section class="card '+kind+'"><div class="chead"><span class="tile">'+icon(ic)+'</span><h2>'+title+'</h2>'
+    +(btnAction?'<button class="addbtn" data-action="'+btnAction+'">'+icon('plus',16)+'<span>'+btnLabel+'</span></button>':'')+'</div>'+inner+'</section>';
+}
+function renderMain(){
+  const b = curB(), u = curU();
+  let h = '<header class="topbar"><div class="brand">Defect inspection</div>'
+    +(b?'<button class="btn ghost small" data-action="report-open" data-id="'+b.id+'">Word report</button>':'')+'</header><main class="pad">';
+
+  // buildings
+  let inner;
+  if(!proj.buildings.length) inner = '<p class="empty">No buildings yet. Add one to start recording units and incidents.</p>';
+  else {
+    inner = '<div class="thead b-cols"><span>Ref</span><span>Building</span><span style="text-align:center">Units</span></div>'
+      + proj.buildings.map(x=>'<div class="trow b'+(x.id===state.sel.b?' sel':'')+'"><button class="rmain b-cols" data-action="sel-b" data-id="'+x.id+'" aria-pressed="'+(x.id===state.sel.b)+'">'
+        +'<span>'+x.ref+'</span><span class="main">'+esc(x.name)+'</span><span class="c-n">'+x.units.length+'</span></button>'
+        +'<button class="dots" data-action="menu" data-kind="building" data-id="'+x.id+'" aria-label="Options for '+esc(x.name)+'">'+icon('dots')+'</button></div>').join('');
+  }
+  h += card('b','Buildings','building','Building','add-b',inner);
+
+  // units
+  if(b){
+    if(!b.units.length) inner = '<p class="empty">No units or locations in '+esc(b.name)+' yet. Add a unit, level, roof, basement or any common area.</p>';
+    else {
+      inner = '<div class="thead u-cols"><span>Unit / location</span><span style="text-align:center">Incidents</span></div>'
+        + b.units.map(x=>'<div class="trow u'+(x.id===state.sel.u?' sel':'')+'"><button class="rmain u-cols" data-action="sel-u" data-id="'+x.id+'" aria-pressed="'+(x.id===state.sel.u)+'">'
+          +'<span class="main">'+esc(x.name)+'</span><span class="c-n">'+x.incidents.length+'</span></button>'
+          +'<button class="dots" data-action="menu" data-kind="unit" data-id="'+x.id+'" aria-label="Options for '+esc(x.name)+'">'+icon('dots')+'</button></div>').join('');
+    }
+    h += card('u','Units / locations','units','Unit / location','add-u',inner);
+  }
+
+  // incidents
+  if(u){
+    if(!u.incidents.length) inner = '<p class="empty">No incidents recorded for '+esc(u.name)+'.</p>';
+    else {
+      inner = '<div class="thead i-cols"><span>Area and description</span><span style="text-align:center">Photos</span></div>'
+        + u.incidents.map(x=>'<div class="trow i"><button class="rmain i-cols" data-action="open-incident" data-id="'+x.id+'">'
+          +'<span><span class="main">'+esc(x.area||'No area')+'</span>'+(x.description?'<span class="desc" style="display:-webkit-box">'+esc(x.description)+'</span>':'')+'</span>'
+          +'<span class="c-n">'+x.photos.length+'</span></button></div>').join('');
+    }
+    h += card('i','Incidents','incident','Incident','add-incident',inner);
+  }
+  if(!hasStore) h += '<p class="sub">Saving is off in this view, so your records last only until you close the page.</p>';
+  return h+'</main>';
+}
+
+function renderIncident(){
+  const e = state.edit, d = e.draft, b = curB(), u = curU();
+  const f = (key,label,type) => '<label class="field"><span>'+label+'</span>'
+    +(type==='line'?'<input type="text" data-f="'+key+'" value="'+esc(d[key])+'">':'<textarea data-f="'+key+'" rows="4">'+esc(d[key])+'</textarea>')+'</label>';
+  const photos = d.photos.map(p=>'<div class="photo"><button class="open" data-action="view-photo" data-id="'+p+'" aria-label="View photo"><img data-photo="'+p+'" alt="Incident photo"></button>'
+    +'<button class="rm" data-action="rm-photo" data-id="'+p+'" aria-label="Remove photo">'+icon('close',14)+'</button></div>').join('');
+  return '<header class="topbar"><button class="back" data-action="back-main">'+icon('back')+'<span>'+esc(u.name)+'</span></button></header>'
+    +'<main class="pad"><h1 style="margin-bottom:14px">'+(e.id?'Edit incident':'New incident')+'</h1>'
+    +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
+    +f('area','Area','line')+f('description','Description')+f('causes','Causes')+f('breach','Breach')+f('scope','Scope of rectification')
+    +'<div class="field"><span>Photos'+(d.photos.length?' ('+d.photos.length+')':'')+'</span>'
+    +(d.photos.length?'<div class="thumbs">'+photos+'</div>':'<p class="sub">Use the gallery or camera button to add photos.</p>')+'</div>'
+    +(e.id?'<button class="btn danger" data-action="delete-incident">Delete incident</button>':'')
+    +'<input type="file" id="galleryInput" class="vh" accept="image/*" multiple tabindex="-1">'
+    +'<input type="file" id="cameraInput" class="vh" accept="image/*" capture="environment" tabindex="-1"></main>'
+    +'<div class="bottombar"><button class="circ gal" data-action="pick-gallery" aria-label="Add photos from gallery">'+icon('gallery',26)+'</button>'
+    +'<button class="circ cam" data-action="pick-camera" aria-label="Take a photo">'+icon('camera',26)+'</button>'
+    +'<button class="btn" data-action="save-incident">Save incident</button></div>';
+}
+
+/* ---------- sheets ---------- */
+function renderSheet(){
+  const s = state.sheet, el = document.getElementById('sheet');
+  document.body.style.overflow = s ? 'hidden' : '';
+  if(!s){ el.innerHTML = ''; return; }
+  let h = '';
+  if(s.type==='name'){
+    const label = s.kind==='building' ? 'Building name' : 'Unit or location name';
+    const ph = s.kind==='building' ? 'e.g. Main building' : 'e.g. Level 3, unit 5 / Roof / Basement';
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">'+esc(s.title)+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<label class="field"><span>'+label+'</span><input type="text" id="nameInput" value="'+esc(s.value)+'" placeholder="'+ph+'" autocomplete="off"></label>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="save-name">Save</button></div></div>';
+  } else if(s.type==='menu'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">'+esc(s.name)+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<div class="menulist">'+(s.kind==='building'?'<button class="btn ghost" data-action="report-open" data-id="'+s.id+'">Create Word report</button>':'')+'<button class="btn ghost" data-action="rename">Rename</button><button class="btn danger" data-action="delete-item">Delete '+s.kind+'</button></div></div>';
+  } else if(s.type==='confirm'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">'+esc(s.title)+'</h2>'
+      +'<p class="sub" style="margin:8px 0 18px">'+esc(s.body)+'</p><div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Keep it</button>'
+      +'<button class="btn danger" data-action="confirm-yes">'+esc(s.yesLabel)+'</button></div></div>';
+  } else if(s.type==='report'){
+    const b = proj.buildings.find(x=>x.id===s.id);
+    const nInc = b.units.reduce((n,u)=>n+u.incidents.length,0), nPh = b.units.reduce((n,u)=>n+photosOfUnit(u).length,0);
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">Word report</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<p class="sub" style="margin-bottom:16px">'+esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.</p>'
+      +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
+      +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="report-make">Create Word file</button></div></div>';
+  } else if(s.type==='working'){
+    h = '<div class="scrim"></div><div class="sheet" role="status"><h2>Building your report</h2><p class="sub" style="margin-top:8px">Adding incidents and photos. This can take a few seconds.</p></div>';
+  } else if(s.type==='ready'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st"><h2 id="st">Report ready</h2>'
+      +'<p class="sub" style="margin:8px 0 16px;overflow-wrap:anywhere">'+esc(s.name)+'</p>'
+      +'<a class="btn block" href="'+s.url+'" download="'+esc(s.name)+'">Download Word file</a>'
+      +(typeof navigator.canShare==='function'?'<button class="btn ghost block" style="margin-top:10px" data-action="share-report">Share or save to Files</button>':'')
+      +'<button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Close</button></div>';
+  } else if(s.type==='photo'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Photo">'
+      +'<img class="bigphoto" data-photo="'+s.id+'" alt="Incident photo"><button class="btn ghost block" data-action="close-sheet">Close</button></div>';
+  }
+  el.innerHTML = h; hydratePhotos();
+  const inp = document.getElementById('nameInput'); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+const closeSheet = () => { if(state.sheet && state.sheet.url) URL.revokeObjectURL(state.sheet.url); state.sheet = null; renderSheet(); };
+function ask(title,body,yesLabel,fn){ state.sheet = {type:'confirm',title,body,yesLabel,fn}; renderSheet(); }
+
+function saveName(){
+  const s = state.sheet, v = (document.getElementById('nameInput').value||'').trim();
+  if(!v){ toast('Enter a name.'); return; }
+  if(s.kind==='building'){
+    if(s.id){ proj.buildings.find(b=>b.id===s.id).name = v; }
+    else { const ref = proj.buildings.reduce((m,b)=>Math.max(m,b.ref),0)+1; const nb = {id:uid(),ref,name:v,units:[]}; proj.buildings.push(nb); state.sel.b = nb.id; state.sel.u = null; }
+  } else {
+    const b = curB();
+    if(s.id){ b.units.find(u=>u.id===s.id).name = v; }
+    else { const nu = {id:uid(),name:v,incidents:[]}; b.units.push(nu); state.sel.u = nu.id; }
+  }
+  state.sheet = null; persist(); render();
+}
+function photosOfUnit(u){ return u.incidents.reduce((a,i)=>a.concat(i.photos),[]); }
+
+/* ---------- incident editing ---------- */
+function openIncident(id){
+  const u = curU(); let draft;
+  if(id){ const x = u.incidents.find(i=>i.id===id); draft = Object.assign({},x,{photos:x.photos.slice()}); }
+  else draft = {area:'',description:'',causes:'',breach:'',scope:'',photos:[]};
+  state.edit = {id:id||null,draft,added:[],removed:[]}; state.view = 'incident'; render(true);
+}
+function leaveEdit(){ const e = state.edit; if(e) e.added.forEach(deletePhoto); state.edit = null; state.view = 'main'; render(true); }
+function saveIncident(){
+  const e = state.edit, d = e.draft, u = curU();
+  if(!d.area.trim() && !d.description.trim()){ toast('Add an area or a description.'); return; }
+  const rec = {id:e.id||uid(),area:d.area.trim(),description:d.description.trim(),causes:d.causes.trim(),breach:d.breach.trim(),scope:d.scope.trim(),photos:d.photos.slice(),created:d.created||Date.now()};
+  const idx = u.incidents.findIndex(i=>i.id===rec.id);
+  if(idx>=0) u.incidents[idx] = rec; else u.incidents.push(rec);
+  e.removed.forEach(deletePhoto);
+  state.edit = null; state.view = 'main'; persist(); render(true); toast('Incident saved');
+}
+async function addPhotos(files){
+  const e = state.edit; if(!e) return;
+  for(const f of files){
+    if(e.draft.photos.length>=12){ toast('Up to 12 photos per incident.'); break; }
+    try{
+      const data = await compress(f), pid = uid();
+      photoCache[pid] = data; await sset('photo:'+pid, data);
+      e.draft.photos.push(pid); e.added.push(pid);
+    }catch(err){ toast("That photo couldn't be read."); }
+  }
+  if(state.edit===e) render();
+}
+
+/* ---------- Word report ---------- */
+/*DOCX_START*/
+function xmlEsc(s){ return String(s==null?'':s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function wRuns(text,rpr){
+  return String(text==null?'':text).split(/\r?\n/).map(function(ln,i){
+    return '<w:r>'+(rpr?'<w:rPr>'+rpr+'</w:rPr>':'')+(i?'<w:br/>':'')+'<w:t xml:space="preserve">'+xmlEsc(ln)+'</w:t></w:r>';
+  }).join('');
+}
+function wPara(inner,ppr){ return '<w:p>'+(ppr?'<w:pPr>'+ppr+'</w:pPr>':'')+inner+'</w:p>'; }
+function wCell(w,inner,fill){
+  return '<w:tc><w:tcPr><w:tcW w:w="'+w+'" w:type="dxa"/>'+(fill?'<w:shd w:val="clear" w:color="auto" w:fill="'+fill+'"/>':'')+'</w:tcPr>'+inner+'</w:tc>';
+}
+function wRow(cells,header){ return '<w:tr>'+(header?'<w:trPr><w:cantSplit/><w:tblHeader/></w:trPr>':'<w:trPr><w:cantSplit/></w:trPr>')+cells+'</w:tr>'; }
+function wTable(widths,rows){
+  var total = widths.reduce(function(a,b){ return a+b; },0);
+  var bd = function(n){ return '<w:'+n+' w:val="single" w:sz="4" w:space="0" w:color="BFC8CD"/>'; };
+  return '<w:tbl><w:tblPr><w:tblW w:w="'+total+'" w:type="dxa"/><w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(bd).join('')
+    +'</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tblCellMar></w:tblPr>'
+    +'<w:tblGrid>'+widths.map(function(w){ return '<w:gridCol w:w="'+w+'"/>'; }).join('')+'</w:tblGrid>'+rows+'</w:tbl>';
+}
+var CELLP = '<w:spacing w:after="0"/>';
+function kvRow(label,value){
+  var v = value ? wRuns(value) : wRuns('Not recorded','<w:i/><w:color w:val="7A8A93"/>');
+  return wRow(wCell(2300,wPara(wRuns(label,'<w:b/>'),CELLP),'EEF2F4')+wCell(7338,wPara(v,CELLP)));
+}
+function wImage(rid,cx,cy,id){
+  var nm = 'Photo '+id;
+  return '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+id+'" name="'+nm+'"/>'
+    +'<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    +'<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="'+nm+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+    +'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
+    +'</a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+}
+function makeDocx(JSZipCtor,d){
+  var zip = new JSZipCtor(), imgN = 0, rels = [], body = '';
+  var P = function(style,text){ return wPara(wRuns(text),'<w:pStyle w:val="'+style+'"/>'); };
+  var totalInc = d.units.reduce(function(n,u){ return n+u.incidents.length; },0);
+
+  body += P('Title','Defect inspection report');
+  body += wPara(wRuns(d.building.name,'<w:b/><w:color w:val="2F7A80"/><w:sz w:val="30"/><w:szCs w:val="30"/>'),'<w:spacing w:after="240"/>');
+  var kv = kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
+  if(d.prepared) kv += kvRow('Prepared by',d.prepared);
+  kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc));
+  body += wTable([2300,7338],kv);
+
+  body += P('Heading1','Summary by unit / location');
+  if(!d.units.length){ body += wPara(wRuns('No units or locations recorded.')); }
+  else {
+    var hdr = wRow(wCell(7338,wPara(wRuns('Unit / location','<w:b/><w:color w:val="FFFFFF"/>'),CELLP),'2F7A80')+wCell(2300,wPara(wRuns('Incidents','<w:b/><w:color w:val="FFFFFF"/>'),CELLP+'<w:jc w:val="center"/>'),'2F7A80'),true);
+    var rows = d.units.map(function(u){
+      return wRow(wCell(7338,wPara(wRuns(u.name),CELLP))+wCell(2300,wPara(wRuns(String(u.incidents.length)),CELLP+'<w:jc w:val="center"/>')));
+    }).join('');
+    body += wTable([7338,2300],hdr+rows);
+  }
+
+  body += P('Heading1','Incidents');
+  if(!totalInc) body += wPara(wRuns('No incidents recorded.'));
+  var n = 0, docPr = 0;
+  d.units.forEach(function(u){
+    if(!u.incidents.length) return;
+    body += P('Heading2',u.name);
+    u.incidents.forEach(function(inc){
+      n++;
+      body += wPara(wRuns('Incident '+n+(inc.area?': '+inc.area:'')),'<w:pStyle w:val="Heading3"/>');
+      body += wTable([2300,7338],kvRow('Area',inc.area)+kvRow('Description',inc.description)+kvRow('Causes',inc.causes)+kvRow('Breach',inc.breach)+kvRow('Scope of rectification',inc.scope));
+      if(inc.images && inc.images.length){
+        body += wPara(wRuns('Photos ('+inc.images.length+')','<w:b/>'),'<w:keepNext/><w:spacing w:before="160" w:after="60"/>');
+        var inner = '', MAX = 2834640;
+        inc.images.forEach(function(im){
+          imgN++; docPr++;
+          var cx, cy;
+          if(im.w>=im.h){ cx = MAX; cy = Math.round(MAX*im.h/im.w); } else { cy = MAX; cx = Math.round(MAX*im.w/im.h); }
+          var rid = 'rId'+(100+imgN);
+          zip.file('word/media/img'+imgN+'.jpg', im.data.split(',')[1], {base64:true});
+          rels.push('<Relationship Id="'+rid+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/img'+imgN+'.jpg"/>');
+          inner += wImage(rid,cx,cy,docPr)+'<w:r><w:t xml:space="preserve">  </w:t></w:r>';
+        });
+        body += wPara(inner,'<w:spacing w:after="120"/>');
+      }
+      body += wPara('','<w:spacing w:after="120"/>');
+    });
+  });
+
+  var NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+  var XH = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  var docXml = XH+'<w:document '+NS+'><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>';
+  var footer = XH+'<w:ftr '+NS+'>'+wPara(wRuns(d.building.name+'   Page ','<w:color w:val="52636D"/><w:sz w:val="18"/>')
+    +'<w:fldSimple w:instr=" PAGE "><w:r><w:rPr><w:color w:val="52636D"/><w:sz w:val="18"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>','<w:jc w:val="center"/>')+'</w:ftr>';
+  var styles = XH+'<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    +'<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="en-AU"/></w:rPr></w:rPrDefault>'
+    +'<w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>'
+    +'<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>'
+    +'<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="60"/></w:pPr><w:rPr><w:b/><w:color w:val="1B2A34"/><w:sz w:val="44"/><w:szCs w:val="44"/></w:rPr></w:style>'
+    +'<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="400" w:after="140"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:color w:val="2F7A80"/><w:sz w:val="30"/><w:szCs w:val="30"/></w:rPr></w:style>'
+    +'<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="BFC8CD"/></w:pBdr><w:spacing w:before="320" w:after="140"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:color w:val="1B2A34"/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr></w:style>'
+    +'<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="100"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:color w:val="B8442E"/><w:sz w:val="23"/><w:szCs w:val="23"/></w:rPr></w:style>'
+    +'</w:styles>';
+  var ct = XH+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/>'
+    +'<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    +'<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+    +'<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>';
+  var rootRels = XH+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+  var docRels = XH+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+    +'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'+rels.join('')+'</Relationships>';
+  zip.file('[Content_Types].xml',ct);
+  zip.file('_rels/.rels',rootRels);
+  zip.file('word/document.xml',docXml);
+  zip.file('word/styles.xml',styles);
+  zip.file('word/footer1.xml',footer);
+  zip.file('word/_rels/document.xml.rels',docRels);
+  return zip;
+}
+/*DOCX_END*/
+function imgSize(src){
+  return new Promise(function(res){ var im = new Image(); im.onload = function(){ res({w:im.naturalWidth||4,h:im.naturalHeight||3}); }; im.onerror = function(){ res({w:4,h:3}); }; im.src = src; });
+}
+const isoToday = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+async function prepareReport(id,prepared,withPhotos){
+  const b = proj.buildings.find(x=>x.id===id), units = [];
+  for(const u of b.units){
+    const incs = [];
+    for(const inc of u.incidents){
+      const images = [];
+      if(withPhotos){
+        for(const pid of inc.photos){
+          const data = photoCache[pid] || await sget('photo:'+pid);
+          if(!data) continue;
+          const dim = await imgSize(data);
+          images.push({data:data,w:dim.w,h:dim.h});
+        }
+      }
+      incs.push({area:inc.area,description:inc.description,causes:inc.causes,breach:inc.breach,scope:inc.scope,images:images});
+    }
+    units.push({name:u.name,incidents:incs});
+  }
+  return {building:{ref:b.ref,name:b.name},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
+}
+let generating = false;
+async function runReport(){
+  const s = state.sheet; if(generating || !s) return;
+  if(typeof JSZip==='undefined'){ toast("Word export couldn't load. Check your connection and reopen the app."); return; }
+  generating = true;
+  const id = s.id, prepared = (s.prepared||'').trim(), withPhotos = !!s.photos;
+  prefs.prepared = prepared; sset('prefs:main', JSON.stringify(prefs));
+  state.sheet = {type:'working'}; renderSheet();
+  try{
+    const data = await prepareReport(id,prepared,withPhotos);
+    const zip = makeDocx(JSZip,data);
+    const blob = await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+    const url = URL.createObjectURL(blob);
+    const safe = data.building.name.replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'building';
+    state.sheet = {type:'ready',url:url,blob:blob,name:'Defect-report-'+safe+'-'+isoToday()+'.docx'}; renderSheet();
+  }catch(err){ console.error(err); state.sheet = null; renderSheet(); toast("Couldn't create the report. Try again."); }
+  generating = false;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', ev=>{
+  const t = ev.target.closest('[data-action]'); if(!t) return;
+  const a = t.dataset.action;
+  switch(a){
+    case 'sel-b': if(state.sel.b!==t.dataset.id){ state.sel.b = t.dataset.id; state.sel.u = null; fixSel(); } render(); break;
+    case 'sel-u': state.sel.u = t.dataset.id; render(); break;
+    case 'add-b': state.sheet = {type:'name',kind:'building',id:null,title:'Add building',value:''}; renderSheet(); break;
+    case 'add-u': state.sheet = {type:'name',kind:'unit',id:null,title:'Add unit or location',value:''}; renderSheet(); break;
+    case 'add-incident': openIncident(null); break;
+    case 'open-incident': openIncident(t.dataset.id); break;
+    case 'menu': {
+      const kind = t.dataset.kind, id = t.dataset.id;
+      const item = kind==='building' ? proj.buildings.find(b=>b.id===id) : curB().units.find(u=>u.id===id);
+      state.sheet = {type:'menu',kind,id,name:item.name}; renderSheet(); break; }
+    case 'rename': {
+      const s = state.sheet; state.sheet = {type:'name',kind:s.kind,id:s.id,title:'Rename '+s.kind,value:s.name}; renderSheet(); break; }
+    case 'save-name': saveName(); break;
+    case 'report-open': state.sheet = {type:'report',id:t.dataset.id,prepared:prefs.prepared||'',photos:true}; renderSheet(); break;
+    case 'report-make': runReport(); break;
+    case 'share-report': {
+      const s = state.sheet, file = new File([s.blob], s.name, {type:s.blob.type});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({files:[file],title:s.name}).catch(()=>{}); }
+      else toast("Sharing isn't available here. Try the download button.");
+      break; }
+    case 'delete-item': {
+      const s = state.sheet;
+      ask('Delete '+s.kind+'?', s.kind==='building' ? 'All units, incidents and photos in "'+s.name+'" will be removed. This cannot be undone.' : 'All incidents and photos in "'+s.name+'" will be removed. This cannot be undone.', 'Delete '+s.kind, ()=>{
+        if(s.kind==='building'){
+          const b = proj.buildings.find(x=>x.id===s.id);
+          b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto));
+          proj.buildings = proj.buildings.filter(x=>x.id!==s.id);
+          if(state.sel.b===s.id){ state.sel.b = null; state.sel.u = null; }
+        } else {
+          const b = curB(), u = b.units.find(x=>x.id===s.id);
+          photosOfUnit(u).forEach(deletePhoto);
+          b.units = b.units.filter(x=>x.id!==s.id);
+          if(state.sel.u===s.id) state.sel.u = null;
+        }
+        fixSel(); persist(); render(); toast('Deleted');
+      }); break; }
+    case 'confirm-yes': { const fn = state.sheet.fn; state.sheet = null; renderSheet(); fn(); break; }
+    case 'close-sheet': closeSheet(); break;
+    case 'back-main': leaveEdit(); break;
+    case 'save-incident': saveIncident(); break;
+    case 'delete-incident': {
+      const e = state.edit;
+      ask('Delete this incident?','Its details and photos will be removed.','Delete incident',()=>{
+        const u = curU(), rec = u.incidents.find(i=>i.id===e.id);
+        if(rec) rec.photos.forEach(deletePhoto);
+        e.added.forEach(deletePhoto);
+        u.incidents = u.incidents.filter(i=>i.id!==e.id);
+        state.edit = null; state.view = 'main'; persist(); render(true); toast('Incident deleted');
+      }); break; }
+    case 'pick-gallery': { const i = document.getElementById('galleryInput'); if(i) i.click(); break; }
+    case 'pick-camera': { const i = document.getElementById('cameraInput'); if(i) i.click(); break; }
+    case 'view-photo': state.sheet = {type:'photo',id:t.dataset.id}; renderSheet(); break;
+    case 'rm-photo': {
+      const e = state.edit, pid = t.dataset.id;
+      e.draft.photos = e.draft.photos.filter(p=>p!==pid);
+      if(e.added.includes(pid)){ e.added = e.added.filter(p=>p!==pid); deletePhoto(pid); } else e.removed.push(pid);
+      render(); break; }
+  }
+});
+document.addEventListener('input', ev=>{
+  const t = ev.target;
+  if(t.dataset.f && state.edit) state.edit.draft[t.dataset.f] = t.value;
+  else if(t.dataset.r==='prepared' && state.sheet) state.sheet.prepared = t.value;
+});
+document.addEventListener('change', ev=>{
+  const t = ev.target;
+  if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
+  if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files); }
+});
+document.addEventListener('keydown', ev=>{
+  if(ev.key==='Escape' && state.sheet) closeSheet();
+  if(ev.key==='Enter' && state.sheet && state.sheet.type==='name' && ev.target.id==='nameInput'){ ev.preventDefault(); saveName(); }
+});
+
+(async function init(){
+  db = await openDb(); hasStore = !!db;
+  if(navigator.storage && navigator.storage.persist){ try{ navigator.storage.persist(); }catch(e){} }
+  if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
+  const v = await sget('proj:main');
+  if(v){ try{ proj = JSON.parse(v); }catch(e){} }
+  const pv = await sget('prefs:main'); if(pv){ try{ prefs = Object.assign(prefs, JSON.parse(pv)); }catch(e){} }
+  fixSel(); render(true);
+})();
+</script>
+</body>
+</html>
