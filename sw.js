@@ -1,4 +1,4 @@
-const CACHE = 'defect-app-v7';
+const CACHE = 'defect-app-v9';
 const FILES = ['./','./index.html','./manifest.webmanifest','./jszip.min.js','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
