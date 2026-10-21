@@ -144,6 +144,8 @@ a.btn{text-decoration:none}
 .thead.i-cols{padding-right:88px}
 .aipreview{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 12px;background:var(--raised);white-space:pre-wrap;font-size:15px;max-height:200px;overflow:auto}
 .aichecks{margin:0 0 14px;padding-left:20px;font-size:15px}
+.repbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.repbtns .btn{min-height:46px;padding:0 10px}
 .linkbtn{background:none;border:0;color:var(--primary);font-weight:650;padding:10px 4px;min-height:44px;text-decoration:underline}
 .sheet h3{font-size:16px;margin:20px 0 6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -268,7 +270,7 @@ function fmtD(d){
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d); if(!m) return '';
   return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 }
-function isSynced(i){ return (i.synced||0) > 0 && i.synced >= (i.modified||0); }
+function isSynced(i){ return (i.csynced||0) > 0 && i.csynced >= (i.modified||0); }
 function markSynced(at){
   jobs.projects.forEach(pj=>pj.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>{ if((i.modified||0) <= at) i.synced = at; }))));
   persist(); state.needsRender = true; toast('Synced: backed up');
@@ -338,9 +340,9 @@ function card(kind,title,ic,btnLabel,btnAction,inner){
 function renderMain(){
   const b = curB(), u = curU();
   let h = '<header class="topbar"><button class="back" data-action="close-project">'+icon('back')+'<span>Projects</span></button>'
-    +(b?'<button class="btn ghost small" data-action="report-open" data-id="'+b.id+'">Word report</button>':'')
-    +'<button class="iconbtn" style="margin-left:'+(b?'4px':'auto')+'" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">'
-    +'<div class="projhead"><h1>'+esc(proj.address||'Project')+'</h1><p class="sub">'+esc([fmtD(proj.date),proj.initials].filter(Boolean).join(', '))+'</p></div>';
+    +'<button class="iconbtn" style="margin-left:auto" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">'
+    +'<div class="projhead"><h1>'+esc(proj.address||'Project')+'</h1><p class="sub">'+esc([fmtD(proj.date),proj.initials].filter(Boolean).join(', '))+'</p>'
+    +(b?'<div class="repbtns"><button class="btn ghost" data-action="report-open" data-fmt="docx" data-id="'+b.id+'">Word report</button><button class="btn ghost" data-action="report-open" data-fmt="pdf" data-id="'+b.id+'">PDF report</button></div>':'')+'</div>';
 
   // buildings
   let inner;
@@ -369,11 +371,11 @@ function renderMain(){
   if(u){
     if(!u.incidents.length) inner = '<p class="empty">No incidents recorded for '+esc(u.name)+'.</p>';
     else {
-      inner = '<div class="thead i-cols"><span>Area and description</span><span style="text-align:center">Photos</span></div>'
+      inner = '<p class="sub" style="margin:0 2px 8px;font-size:14px">Sync icon: <b style="color:var(--ok)">green</b> means saved in the cloud, <b style="color:var(--red)">red</b> means not synced yet.</p><div class="thead i-cols"><span>Area and description</span><span style="text-align:center">Photos</span></div>'
         + u.incidents.map(x=>'<div class="trow i"><button class="rmain i-cols" data-action="open-incident" data-id="'+x.id+'">'
           +'<span><span class="main">'+esc(x.area||'No area')+'</span>'+(x.description?'<span class="desc" style="display:-webkit-box">'+esc(x.description)+'</span>':'')+'</span>'
           +'<span class="c-n">'+x.photos.length+'</span></button>'
-          +'<button class="dots sync '+(isSynced(x)?'ok':'bad')+'" data-action="sync-icon" data-id="'+x.id+'" aria-label="'+(isSynced(x)?'Backed up':'Not backed up. Tap to back up now')+'">'+icon('sync')+'</button>'
+          +'<button class="dots sync '+(isSynced(x)?'ok':'bad')+'" data-action="sync-icon" data-id="'+x.id+'" aria-label="'+(isSynced(x)?'In the cloud':'Not in the cloud yet. Tap to sync')+'">'+icon('sync')+'</button>'
           +'<button class="dots" style="color:var(--muted)" data-action="menu" data-kind="incident" data-id="'+x.id+'" aria-label="Options for '+esc(x.area||'incident')+'">'+icon('dots')+'</button></div>').join('');
     }
     h += card('i','Incidents','incident','Incident','add-incident',inner);
@@ -431,7 +433,7 @@ function renderSheet(){
   } else if(s.type==='menu'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">'+esc(s.name)+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
-      +'<div class="menulist">'+(s.kind==='project'?'<button class="btn ghost" data-action="edit-project">Edit details</button>':'')+(s.kind==='incident'?'<button class="btn ghost" data-action="edit-incident">Edit</button><button class="btn ghost" data-action="sync-now">Sync (back up now)</button>':'')+(s.kind==='building'?'<button class="btn ghost" data-action="report-open" data-id="'+s.id+'">Create Word report</button>':'')+''+(s.kind==='project'||s.kind==='incident'?'':'<button class="btn ghost" data-action="rename">Rename</button>')+'<button class="btn danger" data-action="delete-item">Delete '+s.kind+'</button></div></div>';
+      +'<div class="menulist">'+(s.kind==='project'?'<button class="btn ghost" data-action="edit-project">Edit details</button>':'')+(s.kind==='incident'?'<button class="btn ghost" data-action="edit-incident">Edit</button><button class="btn ghost" data-action="sync-now">Sync to cloud</button>':'')+(s.kind==='building'?'<button class="btn ghost" data-action="report-open" data-id="'+s.id+'">Create a report</button>':'')+''+(s.kind==='project'||s.kind==='incident'?'':'<button class="btn ghost" data-action="rename">Rename</button>')+'<button class="btn danger" data-action="delete-item">Delete '+s.kind+'</button></div></div>';
   } else if(s.type==='confirm'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">'+esc(s.title)+'</h2>'
       +'<p class="sub" style="margin:8px 0 18px">'+esc(s.body)+'</p><div class="sheetactions"><button class="btn ghost" data-action="close-sheet">'+esc(s.noLabel||'Keep it')+'</button>'
@@ -441,12 +443,12 @@ function renderSheet(){
     const nInc = b.units.reduce((n,u)=>n+u.incidents.length,0), nPh = b.units.reduce((n,u)=>n+photosOfUnit(u).length,0);
     let nPlace = 0; b.units.forEach(u=>u.incidents.forEach(i=>{ if(((i.breach||'')+(i.scope||'')).indexOf('[CONFIRM')>=0) nPlace++; }));
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
-      +'<div class="sheethead"><h2 id="st">Word report</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<div class="sheethead"><h2 id="st">'+(s.fmt==='pdf'?'PDF report':'Word report')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<p class="sub" style="margin-bottom:16px">'+esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.</p>'
       +(nPlace?'<p class="sub" style="margin-bottom:14px;color:var(--hazard)">'+nPlace+' incident'+(nPlace===1?'':'s')+' still ha'+(nPlace===1?'s':'ve')+' [CONFIRM] placeholders in the breach or scope. Resolve them before you issue this report.</p>':'')
       +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
       +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
-      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="report-make">Create Word file</button></div></div>';
+      +'<div class="sheetactions"><button class="btn'+(s.fmt==='pdf'?' ghost':'')+'" data-action="report-make" data-fmt="docx">Create Word file</button><button class="btn'+(s.fmt==='pdf'?'':' ghost')+'" data-action="report-make" data-fmt="pdf">Create PDF file</button></div><button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Cancel</button></div>';
   } else if(s.type==='suggest'){
     const q = (s.q||'').trim().toLowerCase();
     const items = LIB.filter(x=>!q || (x.name+' '+x.std.map(a=>a.n+' '+a.t).join(' ')).toLowerCase().indexOf(q)>=0);
@@ -565,6 +567,135 @@ async function addPhotos(files){
     }catch(err){ toast("That photo couldn't be read."); }
   }
   if(state.edit===e) render();
+}
+
+/* ---------- PDF report ---------- */
+/*PDF_START*/
+async function makePdf(PDFLib, d){
+  const PDFDocument = PDFLib.PDFDocument, StandardFonts = PDFLib.StandardFonts, rgb = PDFLib.rgb;
+  const doc = await PDFDocument.create();
+  doc.setTitle('Defect inspection report - '+d.building.name); doc.setCreator('Defect inspection app');
+  const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold), FI = await doc.embedFont(StandardFonts.HelveticaOblique);
+  const ok = new Set(F.getCharacterSet());
+  const clean = s => Array.from(String(s==null?'':s).replace(/\r/g,'')).map(ch=>{ if(ch==='\n') return ch; if(ch==='\t') return ' '; return ok.has(ch.codePointAt(0)) ? ch : '?'; }).join('');
+  const W = 595.28, H = 841.89, MX = 50, TOP = 56, BOT = 62, CW = W-2*MX;
+  const INK = rgb(0.106,0.165,0.204), TEAL = rgb(0.184,0.478,0.502), MUTED = rgb(0.32,0.39,0.43), LINE = rgb(0.78,0.82,0.84), RUST = rgb(0.72,0.27,0.18), WHITE = rgb(1,1,1);
+  let page = null, y = 0;
+  const newPage = () => { page = doc.addPage([W,H]); y = H-TOP; };
+  const need = h => { if(!page || y-h < BOT) newPage(); };
+  function wrap(text,font,size,maxW){
+    const out = [];
+    clean(text).split('\n').forEach(par=>{
+      if(!par.trim()){ out.push(''); return; }
+      let line = '';
+      par.split(' ').forEach(w0=>{
+        let w = w0;
+        while(font.widthOfTextAtSize(w,size) > maxW){
+          let k = w.length; while(k>1 && font.widthOfTextAtSize(w.slice(0,k),size) > maxW) k--;
+          if(line){ out.push(line); line = ''; }
+          out.push(w.slice(0,k)); w = w.slice(k);
+        }
+        const t = line ? line+' '+w : w;
+        if(font.widthOfTextAtSize(t,size) <= maxW) line = t; else { out.push(line); line = w; }
+      });
+      out.push(line);
+    });
+    return out;
+  }
+  function lines(text,opt){
+    const font = opt.font||F, size = opt.size||10, lead = opt.lead||size*1.4, x = opt.x||MX, maxW = opt.w||CW;
+    wrap(text,font,size,maxW).forEach(l=>{ need(lead); if(l) page.drawText(l,{x:x,y:y-size,size:size,font:font,color:opt.color||INK}); y -= lead; });
+  }
+  function gap(h){ y -= h; }
+  function h2(text){ need(40); gap(14); lines(text,{font:FB,size:14,color:TEAL,lead:18}); gap(2); }
+  function kv(label,value,empty){
+    const LW = 150, size = 10, lead = 14;
+    const val = (value==null||String(value).trim()==='') ? 'Not recorded' : String(value);
+    const isEmpty = val==='Not recorded' && !!empty;
+    const ls = wrap(val,isEmpty?FI:F,size,CW-LW-6);
+    need(lead+6);
+    page.drawText(clean(label),{x:MX,y:y-size,size:9.5,font:FB,color:MUTED});
+    ls.forEach((l,i)=>{ if(i>0) need(lead); if(l) page.drawText(l,{x:MX+LW,y:y-size,size:size,font:isEmpty?FI:F,color:isEmpty?MUTED:INK}); y -= lead; });
+    gap(3); page.drawLine({start:{x:MX,y:y+1},end:{x:W-MX,y:y+1},thickness:0.5,color:LINE}); gap(4);
+  }
+  // title block
+  newPage();
+  lines('Defect inspection report',{font:FB,size:24,lead:30});
+  lines(d.building.name,{font:FB,size:15,color:TEAL,lead:22}); gap(8);
+  const totalInc = d.units.reduce((n,u)=>n+u.incidents.length,0);
+  if(d.project && d.project.address) kv('Property',d.project.address);
+  if(d.project && d.project.dateText) kv('Inspection date',d.project.dateText);
+  if(d.project && d.project.clsText) kv('Building class',d.project.clsText);
+  if(d.project && d.project.nccText) kv('Code edition assessed against',d.project.nccText);
+  kv('Building',d.building.name); kv('Reference',String(d.building.ref)); kv('Report date',d.date);
+  if(d.prepared) kv('Prepared by',d.prepared);
+  kv('Units / locations',String(d.units.length)); kv('Incidents recorded',String(totalInc));
+  // summary table
+  h2('Summary by unit / location');
+  if(!d.units.length) lines('No units or locations recorded.',{});
+  else {
+    need(24);
+    page.drawRectangle({x:MX,y:y-20,width:CW,height:20,color:TEAL});
+    page.drawText('Unit / location',{x:MX+8,y:y-14,size:10,font:FB,color:WHITE});
+    page.drawText('Incidents',{x:W-MX-62,y:y-14,size:10,font:FB,color:WHITE});
+    y -= 20;
+    d.units.forEach(u=>{
+      const ls = wrap(u.name,F,10,CW-100); const h = Math.max(1,ls.length)*14+8; need(h);
+      ls.forEach((l,i)=>{ if(l) page.drawText(l,{x:MX+8,y:y-15-i*14,size:10,font:F,color:INK}); });
+      const c = String(u.incidents.length); page.drawText(c,{x:W-MX-34-F.widthOfTextAtSize(c,10)/2,y:y-15,size:10,font:F,color:INK});
+      y -= h; page.drawLine({start:{x:MX,y:y},end:{x:W-MX,y:y},thickness:0.5,color:LINE});
+    });
+  }
+  // incidents
+  h2('Incidents');
+  if(!totalInc) lines('No incidents recorded.',{});
+  let n = 0;
+  for(const u of d.units){
+    if(!u.incidents.length) continue;
+    need(60); gap(8); lines(u.name,{font:FB,size:12.5,lead:17}); page.drawLine({start:{x:MX,y:y+2},end:{x:W-MX,y:y+2},thickness:0.8,color:LINE}); gap(6);
+    for(const inc of u.incidents){
+      n++;
+      need(90); gap(6); lines('Incident '+n+(inc.area?': '+inc.area:''),{font:FB,size:11.5,color:RUST,lead:16}); gap(2);
+      kv('Area',inc.area,true); kv('Description',inc.description,true); kv('Causes',inc.causes,true); kv('Breach',inc.breach,true); kv('Scope of rectification',inc.scope,true);
+      if(inc.images && inc.images.length){
+        need(30); lines('Photos ('+inc.images.length+')',{font:FB,size:10,lead:14}); gap(2);
+        const embedded = [];
+        for(const im of inc.images){
+          try{
+            const m = /^data:(.*?);base64,(.*)$/.exec(im.data); const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) bytes[k] = bin.charCodeAt(k);
+            embedded.push(/png/i.test(m[1]) ? await doc.embedPng(bytes) : await doc.embedJpg(bytes));
+          }catch(e){}
+        }
+        const cw = (CW-12)/2, ch = 215;
+        for(let k=0;k<embedded.length;k+=2){
+          const pair = embedded.slice(k,k+2).map(img=>{ const s = Math.min(cw/img.width, ch/img.height); return {img:img,w:img.width*s,h:img.height*s}; });
+          const rh = Math.max.apply(null,pair.map(p=>p.h)); need(rh+8);
+          pair.forEach((p,j)=>{ page.drawImage(p.img,{x:MX+j*(cw+12),y:y-p.h,width:p.w,height:p.h}); });
+          y -= rh+8;
+        }
+      }
+      gap(8);
+    }
+  }
+  // footer on every page
+  const pages = doc.getPages();
+  pages.forEach((pg,i)=>{
+    const foot = clean(d.building.name);
+    pg.drawText(foot,{x:MX,y:30,size:8.5,font:F,color:MUTED});
+    const t = 'Page '+(i+1)+' of '+pages.length; pg.drawText(t,{x:W-MX-F.widthOfTextAtSize(t,8.5),y:30,size:8.5,font:F,color:MUTED});
+  });
+  return await doc.save();
+}
+/*PDF_END*/
+let pdfLibP = null;
+function loadPdfLib(){
+  if(window.PDFLib) return Promise.resolve(window.PDFLib);
+  if(!pdfLibP) pdfLibP = new Promise((res,rej)=>{
+    const s = document.createElement('script'); s.src = 'pdf-lib.min.js';
+    s.onload = ()=>res(window.PDFLib); s.onerror = ()=>{ pdfLibP = null; rej(new Error('pdflib')); };
+    document.head.appendChild(s);
+  });
+  return pdfLibP;
 }
 
 /* ---------- Word report ---------- */
@@ -712,19 +843,30 @@ async function prepareReport(id,prepared,withPhotos){
 let generating = false;
 async function runReport(){
   const s = state.sheet; if(generating || !s) return;
-  if(typeof JSZip==='undefined'){ toast("Word export couldn't load. Check your connection and reopen the app."); return; }
+  const fmt = s.fmt==='pdf' ? 'pdf' : 'docx';
+  if(fmt==='docx' && typeof JSZip==='undefined'){ toast("Word export couldn't load. Check your connection and reopen the app."); return; }
   generating = true;
   const id = s.id, prepared = (s.prepared||'').trim(), withPhotos = !!s.photos;
   prefs.prepared = prepared; sset('prefs:main', JSON.stringify(prefs));
-  state.sheet = {type:'working'}; renderSheet();
+  state.sheet = {type:'working',title:fmt==='pdf'?'Building your PDF':'Building your report'}; renderSheet();
   try{
     const data = await prepareReport(id,prepared,withPhotos);
-    const zip = makeDocx(JSZip,data);
-    const blob = await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+    let blob, ext;
+    if(fmt==='pdf'){
+      const PL = await loadPdfLib();
+      blob = new Blob([await makePdf(PL,data)],{type:'application/pdf'}); ext = 'pdf';
+    } else {
+      const zip = makeDocx(JSZip,data);
+      blob = await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'}); ext = 'docx';
+    }
     const url = URL.createObjectURL(blob);
     const safe = data.building.name.replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'building';
-    state.sheet = {type:'ready',url:url,blob:blob,name:'Defect-report-'+safe+'-'+isoToday()+'.docx'}; renderSheet();
-  }catch(err){ console.error(err); state.sheet = null; renderSheet(); toast("Couldn't create the report. Try again."); }
+    state.sheet = {type:'ready',url:url,blob:blob,name:'Defect-report-'+safe+'-'+isoToday()+'.'+ext,
+      title:fmt==='pdf'?'PDF report ready':'Report ready',btnLabel:fmt==='pdf'?'Download PDF file':'Download Word file'}; renderSheet();
+  }catch(err){
+    console.error(err); state.sheet = null; renderSheet();
+    toast(err && err.message==='pdflib' ? "The PDF tool couldn't load. Check your signal and try again." : "Couldn't create the report. Try again.");
+  }
   generating = false;
 }
 
@@ -1028,7 +1170,7 @@ function parseBackup(o){
           const ph = (Array.isArray(i.photos)?i.photos:[]).filter(p=>idOk(p) && o.photos && typeof o.photos[p]==='string' && o.photos[p].indexOf('data:image/')===0);
           ph.forEach(p=>{ photos[p] = o.photos[p]; nPh++; });
           nInc++;
-          return {id:i.id,area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0,synced:Date.now()};
+          return {id:i.id,area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0};
         })};
       })};
     });
@@ -1220,7 +1362,7 @@ async function testAi(){
 /* ---------- Cloud sync (Supabase) ---------- */
 /*MERGE_START*/
 const PF = ['address','date','initials','cls','ncc','done'];
-const canon = x => JSON.stringify(x,(k,v)=>{ if(k==='synced') return undefined; if(v && typeof v==='object' && !Array.isArray(v)){ const o = {}; Object.keys(v).sort().forEach(kk=>{ o[kk] = v[kk]; }); return o; } return v; });
+const canon = x => JSON.stringify(x,(k,v)=>{ if(k==='synced' || k==='csynced') return undefined; if(v && typeof v==='object' && !Array.isArray(v)){ const o = {}; Object.keys(v).sort().forEach(kk=>{ o[kk] = v[kk]; }); return o; } return v; });
 const same = (a,b) => canon(a)===canon(b);
 function pick3(bv,lv,rv){
   if(lv===rv) return lv;
@@ -1398,7 +1540,7 @@ async function syncNow(manual){
     }
     const order = []; localSnap.forEach(p=>{ if(merged.has(p.id)) order.push(p.id); }); merged.forEach((v,k)=>{ if(order.indexOf(k)<0) order.push(k); });
     jobs.projects = order.map(id=>merged.get(id));
-    jobs.projects.forEach(p=>{ if(okIds.has(p.id)) p.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>{ if((i.modified||0)<=startAt) i.synced = startAt; }))); });
+    jobs.projects.forEach(p=>{ if(okIds.has(p.id)) p.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>{ if((i.modified||0)<=startAt) i.csynced = startAt; }))); });
     cloudState.base = newBase; cloudState.meta = newMeta;
     prefs.cloud.lastSync = Date.now(); await sset('prefs:main', JSON.stringify(prefs));
     await saveCloudState(); await saveNow();
@@ -1437,6 +1579,9 @@ async function cloudSignOut(){
 }
 
 
+function openSettings(){
+  state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:''}; renderSheet();
+}
 function cloudBlock(s){
   const c = prefs.cloud || {};
   if(c.session){
@@ -1456,7 +1601,7 @@ document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
-    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:''}; renderSheet(); break;
+    case 'settings-open': openSettings(); break;
     case 'cloud-signin': cloudSignIn(); break;
     case 'cloud-signout': cloudSignOut(); break;
     case 'cloud-sync': syncNow(true); break;
@@ -1493,16 +1638,16 @@ document.addEventListener('click', ev=>{
     case 'rename': {
       const s = state.sheet; state.sheet = {type:'name',kind:s.kind,id:s.id,title:'Rename '+s.kind,value:s.name}; renderSheet(); break; }
     case 'save-name': saveName(); break;
-    case 'report-open': state.sheet = {type:'report',id:t.dataset.id,prepared:prefs.prepared||'',photos:true}; renderSheet(); break;
-    case 'report-make': runReport(); break;
+    case 'report-open': state.sheet = {type:'report',id:t.dataset.id,prepared:prefs.prepared||'',photos:true,fmt:t.dataset.fmt||'docx'}; renderSheet(); break;
+    case 'report-make': if(state.sheet) state.sheet.fmt = t.dataset.fmt || state.sheet.fmt || 'docx'; runReport(); break;
     case 'backup-open': state.sheet = {type:'backup'}; renderSheet(); break;
     case 'backup-make': makeBackup(); break;
     case 'restore-pick': { const i = document.getElementById('restoreInput'); if(i) i.click(); break; }
     case 'mark-synced': if(state.sheet && state.sheet.syncAt) markSynced(state.sheet.syncAt); break;
     case 'sync-icon': {
       const inc = curU().incidents.find(x=>x.id===t.dataset.id);
-      if(inc && isSynced(inc)) toast(cloudOn()?'Already in the cloud':'Already backed up'); else if(cloudOn()) syncNow(true); else makeBackup(); break; }
-    case 'sync-now': state.sheet = null; renderSheet(); makeBackup(); break;
+      if(inc && isSynced(inc)) toast('Already in the cloud'); else if(cloudOn()) syncNow(true); else { toast('Sign in to cloud sync to turn this green.'); openSettings(); } break; }
+    case 'sync-now': state.sheet = null; renderSheet(); if(cloudOn()) syncNow(true); else openSettings(); break;
     case 'edit-incident': { const id = state.sheet.id; state.sheet = null; renderSheet(); openIncident(id); break; }
     case 'share-report': {
       const s = state.sheet, file = new File([s.blob], s.name, {type:s.blob.type});
