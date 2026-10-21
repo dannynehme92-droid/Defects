@@ -213,6 +213,7 @@ async function sdel(k){
 
 /* ---------- state ---------- */
 let jobs = {projects:[]};
+let localVersion = 0;
 let proj = {buildings:[]};
 let prefs = {prepared:''};
 const state = {view:'projects', sel:{p:null,b:null,u:null}, edit:null, sheet:null, ui:{q:'',pf:'all'}};
@@ -220,7 +221,7 @@ const photoCache = {}, photoLoading = {};
 const curB = () => proj.buildings.find(b=>b.id===state.sel.b) || null;
 const curU = () => { const b = curB(); return b ? (b.units.find(u=>u.id===state.sel.u)||null) : null; };
 let saveT = null;
-function persist(){ clearTimeout(saveT); saveT = setTimeout(saveNow,300); }
+function persist(){ localVersion++; clearTimeout(saveT); saveT = setTimeout(saveNow,300); if(typeof scheduleSync==='function') scheduleSync(); }
 async function saveNow(){ clearTimeout(saveT); await sset('proj:main', JSON.stringify(jobs)); }
 function fixSel(){
   if(!curB()) state.sel.b = proj.buildings.length ? proj.buildings[0].id : null;
@@ -305,7 +306,7 @@ function renderProjects(){
           +'<button class="dots" style="color:var(--muted)" data-action="menu" data-kind="project" data-id="'+p.id+'" aria-label="Options for '+esc(p.address)+'">'+icon('dots')+'</button></div>';
       }).join('');
   }
-  h += '</section>'+backupNudge();
+  h += '</section>'+backupNudge()+cloudLine();
   if(!hasStore) h += '<p class="sub">Saving is off in this view, so your records last only until you close the page.</p>';
   return h+'</main>';
 }
@@ -461,7 +462,7 @@ function renderSheet(){
   } else if(s.type==='settings'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Settings</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
-      +'<h3 style="margin-top:0">AI assistant (optional)</h3>'
+      +cloudBlock(s)+'<h3 style="margin-top:24px">AI assistant (optional)</h3>'
       +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. Paste your Anthropic API key below. It is stored only on this device, and the app talks to Anthropic directly. Set a monthly spending limit in your Anthropic account. Clearing the key removes the button.</p>'
       +'<label class="field"><span>Anthropic API key</span><input type="password" data-s="aiKey" value="'+esc(s.aiKey)+'" placeholder="sk-ant-..." autocomplete="off" autocapitalize="none"></label>'
       +'<details style="margin:0 0 16px"><summary class="sub">Advanced: use your own server instead</summary>'
@@ -543,6 +544,7 @@ function openIncident(id){
 function leaveEdit(){ const e = state.edit; if(e) e.added.forEach(deletePhoto); state.edit = null; state.view = 'main'; render(true); }
 function saveIncident(){
   const e = state.edit, d = e.draft, u = curU();
+  if(!u){ toast('This unit was deleted on another device, so the incident could not be saved.'); leaveEdit(); return; }
   if(!d.area.trim() && !d.description.trim()){ toast('Add an area or a description.'); return; }
   const rec = {id:e.id||uid(),area:d.area.trim(),description:d.description.trim(),causes:d.causes.trim(),breach:d.breach.trim(),scope:d.scope.trim(),photos:d.photos.slice(),created:d.created||Date.now()};
   const prev = u.incidents.find(i=>i.id===rec.id);
@@ -1049,6 +1051,7 @@ async function doRestore(parsed){
     for(const id of allPhotoIds()){ delete photoCache[id]; await sdel('photo:'+id); }
     for(const id of Object.keys(parsed.photos)){ photoCache[id] = parsed.photos[id]; await sset('photo:'+id, parsed.photos[id]); }
     jobs = parsed.root; proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.view = 'projects';
+    cloudState.base = {}; cloudState.meta = {}; await saveCloudState();
     await saveNow();
     state.sheet = null; render(true); toast('Backup restored');
   }catch(err){ console.error(err); state.sheet = null; render(true); toast("Couldn't restore the backup."); }
@@ -1214,12 +1217,249 @@ async function testAi(){
   }catch(err){ toast("Couldn't reach the AI service. Check your signal."); }
 }
 
+/* ---------- Cloud sync (Supabase) ---------- */
+/*MERGE_START*/
+const PF = ['address','date','initials','cls','ncc','done'];
+const canon = x => JSON.stringify(x,(k,v)=>{ if(k==='synced') return undefined; if(v && typeof v==='object' && !Array.isArray(v)){ const o = {}; Object.keys(v).sort().forEach(kk=>{ o[kk] = v[kk]; }); return o; } return v; });
+const same = (a,b) => canon(a)===canon(b);
+function pick3(bv,lv,rv){
+  if(lv===rv) return lv;
+  if(bv===undefined) return lv;
+  if(lv===bv) return rv;
+  return lv;
+}
+function mergeList(base,loc,rem,mergeItem){
+  const bm = new Map(base.map(x=>[x.id,x])), lm = new Map(loc.map(x=>[x.id,x])), rm = new Map(rem.map(x=>[x.id,x]));
+  const order = []; loc.forEach(x=>order.push(x.id)); rem.forEach(x=>{ if(!lm.has(x.id)) order.push(x.id); });
+  const out = [];
+  order.forEach(id=>{
+    const b = bm.get(id), l = lm.get(id), r = rm.get(id);
+    if(l && r) out.push(mergeItem(b,l,r));
+    else if(l){ if(b && same(l,b)) return; out.push(l); }
+    else if(r){ if(b && same(r,b)) return; out.push(r); }
+  });
+  return out;
+}
+function mergeIncident(b,l,r){
+  if(same(l,r)) return l;
+  if(b && same(l,b)) return r;
+  if(b && same(r,b)) return l;
+  return (l.modified||0) >= (r.modified||0) ? l : r;
+}
+function mergeUnit(b,l,r){
+  const bb = b || {name:undefined,incidents:[]};
+  return {id:l.id,name:pick3(bb.name,l.name,r.name),incidents:mergeList(bb.incidents,l.incidents||[],r.incidents||[],mergeIncident)};
+}
+function mergeBuilding(b,l,r){
+  const bb = b || {ref:undefined,name:undefined,units:[]};
+  return {id:l.id,ref:pick3(bb.ref,l.ref,r.ref),name:pick3(bb.name,l.name,r.name),units:mergeList(bb.units,l.units||[],r.units||[],mergeUnit)};
+}
+function mergeProject(b,l,r){
+  const bb = b || {buildings:[]};
+  const out = {id:l.id,created:l.created||r.created,buildings:mergeList(bb.buildings,l.buildings||[],r.buildings||[],mergeBuilding)};
+  PF.forEach(k=>{ out[k] = pick3(bb[k],l[k],r[k]); });
+  return out;
+}
+/*MERGE_END*/
+let cloudState = {base:{},meta:{},photosUp:{}};
+let cloudMsg = '', syncing = false, syncTimer = null, resyncTimer = null;
+const cloudOn = () => !!(prefs.cloud && prefs.cloud.url && prefs.cloud.key && prefs.cloud.session);
+function fmtClock(t){ return new Date(t).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}); }
+function cloudStatusText(){
+  if(cloudMsg) return cloudMsg;
+  return prefs.cloud && prefs.cloud.lastSync ? 'Last synced '+fmtClock(prefs.cloud.lastSync)+'.' : 'Not synced yet.';
+}
+function setCloudMsg(m){
+  cloudMsg = m;
+  const el = document.getElementById('cloudline'); if(el) el.innerHTML = cloudLineInner();
+}
+function cloudLineInner(){ return 'Cloud: '+esc(cloudStatusText())+' <button class="linkbtn" data-action="cloud-sync">Sync now</button>'; }
+function cloudLine(){ return cloudOn() ? '<p class="sub" id="cloudline">'+cloudLineInner()+'</p>' : ''; }
+async function saveCloudState(){ await sset('cloud:state', JSON.stringify(cloudState)); }
+function scheduleSync(){
+  if(!cloudOn()) return;
+  clearTimeout(syncTimer); syncTimer = setTimeout(()=>syncNow(false), 4000);
+}
+async function refreshSession(){
+  const c = prefs.cloud;
+  const res = await fetch(c.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:c.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:c.session.refresh})});
+  if(!res.ok){ const e = new Error('auth'); e.status = res.status; throw e; }
+  const j = await res.json();
+  c.session = {access:j.access_token,refresh:j.refresh_token||c.session.refresh,expires:Date.now()+(j.expires_in||3600)*1000,uid:(j.user&&j.user.id)||c.session.uid};
+  await sset('prefs:main', JSON.stringify(prefs));
+}
+async function ensureSession(){ if(Date.now() > prefs.cloud.session.expires-60000) await refreshSession(); }
+async function sbReq(method,path,body,headers,raw){
+  await ensureSession();
+  const c = prefs.cloud;
+  const h = Object.assign({apikey:c.key,Authorization:'Bearer '+c.session.access},headers||{});
+  const init = {method:method,headers:h,cache:'no-store'};
+  if(body!==undefined){ if(typeof Blob!=='undefined' && body instanceof Blob) init.body = body; else { h['Content-Type']='application/json'; init.body = JSON.stringify(body); } }
+  let res = await fetch(c.url+path, init);
+  if(res.status===401){ await refreshSession(); h.Authorization = 'Bearer '+prefs.cloud.session.access; res = await fetch(c.url+path, init); }
+  if(!res.ok){ const e = new Error('http'); e.status = res.status; try{ e.body = await res.text(); }catch(_){} throw e; }
+  if(raw) return res;
+  return res.status===204 ? null : res.json();
+}
+function dataUrlToBlob(d){
+  const m = /^data:(.*?);base64,(.*)$/.exec(d); const bin = atob(m[2]); const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr],{type:m[1]||'image/jpeg'});
+}
+function blobToDataUrl(b){ return new Promise((res,rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = rej; r.readAsDataURL(b); }); }
+function photoIdsOf(p){ const ids = []; p.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>(i.photos||[]).forEach(x=>ids.push(x))))); return ids; }
+function cloudDoc(p){ return JSON.parse(canon(p)); }
+const deep = x => JSON.parse(JSON.stringify(x));
+async function uploadPhoto(pid){
+  const d = photoCache[pid] || await sget('photo:'+pid); if(!d) return false;
+  await sbReq('POST','/storage/v1/object/photos/'+prefs.cloud.session.uid+'/'+pid+'.jpg',dataUrlToBlob(d),{'x-upsert':'true'},true);
+  cloudState.photosUp[pid] = true; return true;
+}
+async function downloadPhoto(pid){
+  const res = await sbReq('GET','/storage/v1/object/authenticated/photos/'+prefs.cloud.session.uid+'/'+pid+'.jpg',undefined,undefined,true);
+  const d = await blobToDataUrl(await res.blob());
+  photoCache[pid] = d; await sset('photo:'+pid, d); cloudState.photosUp[pid] = true;
+}
+async function inChunks(items,n,fn){
+  let failed = 0;
+  for(let i=0;i<items.length;i+=n){
+    const rs = await Promise.all(items.slice(i,i+n).map(x=>fn(x).then(()=>0,()=>1)));
+    failed += rs.reduce((a,b)=>a+b,0);
+  }
+  return failed;
+}
+async function syncNow(manual){
+  if(!cloudOn()){ if(manual) toast('Sign in to cloud sync in Settings first.'); return; }
+  if(syncing) return;
+  if(typeof navigator!=='undefined' && navigator.onLine===false){ setCloudMsg('Offline. Changes will sync when you reconnect.'); return; }
+  syncing = true; setCloudMsg('Syncing...');
+  const startVer = localVersion, startAt = Date.now();
+  try{
+    const remoteList = await sbReq('GET','/rest/v1/projects?select=id,updated_at,deleted');
+    const rmeta = new Map(remoteList.map(r=>[r.id,r]));
+    const localSnap = JSON.parse(JSON.stringify(jobs.projects));
+    const ids = []; const seen = new Set();
+    [localSnap.map(p=>p.id),Object.keys(cloudState.base),remoteList.map(r=>r.id)].forEach(a=>a.forEach(id=>{ if(!seen.has(id)){ seen.add(id); ids.push(id); } }));
+    const merged = new Map(), newBase = {}, newMeta = {}, pushes = [];
+    for(const id of ids){
+      const l = localSnap.find(p=>p.id===id) || null;
+      const b = cloudState.base[id] || null;
+      const rm = rmeta.get(id) || null;
+      if(rm && rm.deleted){
+        if(l){
+          if(b && same(l,b)){ /* remote deleted, local unchanged: drop it */ }
+          else { merged.set(id,l); pushes.push({id:id,doc:cloudDoc(l),deleted:false,expect:rm.updated_at,local:l}); }
+        }
+        continue;
+      }
+      if(rm){
+        let r;
+        if(b && cloudState.meta[id]===rm.updated_at) r = deep(b);
+        else { const rows = await sbReq('GET','/rest/v1/projects?select=data&id=eq.'+encodeURIComponent(id)); r = rows[0] && rows[0].data; }
+        if(!r) continue;
+        if(l){
+          const m = mergeProject(b,l,r);
+          merged.set(id,m); newBase[id] = deep(m); newMeta[id] = rm.updated_at;
+          if(!same(m,r)) pushes.push({id:id,doc:cloudDoc(m),deleted:false,expect:rm.updated_at,local:m});
+        } else if(b){
+          if(same(r,b)) pushes.push({id:id,doc:cloudDoc(r),deleted:true,expect:rm.updated_at,local:null});
+          else { merged.set(id,r); newBase[id] = deep(r); newMeta[id] = rm.updated_at; }
+        } else { merged.set(id,r); newBase[id] = deep(r); newMeta[id] = rm.updated_at; }
+      } else if(l){
+        merged.set(id,l); pushes.push({id:id,doc:cloudDoc(l),deleted:false,expect:null,local:l});
+      }
+    }
+    // photos first, so the cloud has them before any record points at them
+    const wantUp = [];
+    pushes.forEach(p=>{ if(!p.deleted) photoIdsOf(p.doc).forEach(x=>{ if(!cloudState.photosUp[x] && wantUp.indexOf(x)<0) wantUp.push(x); }); });
+    let photoFails = await inChunks(wantUp,3,uploadPhoto);
+    const okIds = new Set(merged.keys());
+    let conflicts = 0;
+    for(const p of pushes){
+      const ts = Math.max(Date.now(), (p.expect||0)+1);
+      let rows;
+      if(p.expect===null){
+        rows = await sbReq('POST','/rest/v1/projects?on_conflict=id',{id:p.id,data:p.doc,updated_at:ts,deleted:false},{Prefer:'resolution=merge-duplicates,return=representation'});
+      } else {
+        rows = await sbReq('PATCH','/rest/v1/projects?id=eq.'+encodeURIComponent(p.id)+'&updated_at=eq.'+p.expect,{data:p.doc,updated_at:ts,deleted:p.deleted},{Prefer:'return=representation'});
+      }
+      if(!rows || !rows.length){ conflicts++; okIds.delete(p.id); continue; }
+      if(!p.deleted && p.local){ newBase[p.id] = deep(p.local); newMeta[p.id] = ts; }
+    }
+    // photos that other devices uploaded
+    const have = new Set(); const need = [];
+    merged.forEach(p=>photoIdsOf(p).forEach(x=>{ if(!have.has(x)){ have.add(x); need.push(x); } }));
+    const missing = [];
+    for(const x of need){ if(!(photoCache[x] || await sget('photo:'+x))) missing.push(x); else if(!cloudState.photosUp[x] && !wantUp.includes(x)){ /* local-only photo of an unchanged project */ } }
+    photoFails += await inChunks(missing,3,downloadPhoto);
+    // apply, unless the user changed something while we were syncing
+    if(localVersion!==startVer){
+      await saveCloudState(); syncing = false; setCloudMsg('Syncing...'); clearTimeout(resyncTimer); resyncTimer = setTimeout(()=>syncNow(false),800); return;
+    }
+    const order = []; localSnap.forEach(p=>{ if(merged.has(p.id)) order.push(p.id); }); merged.forEach((v,k)=>{ if(order.indexOf(k)<0) order.push(k); });
+    jobs.projects = order.map(id=>merged.get(id));
+    jobs.projects.forEach(p=>{ if(okIds.has(p.id)) p.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>{ if((i.modified||0)<=startAt) i.synced = startAt; }))); });
+    cloudState.base = newBase; cloudState.meta = newMeta;
+    prefs.cloud.lastSync = Date.now(); await sset('prefs:main', JSON.stringify(prefs));
+    await saveCloudState(); await saveNow();
+    if(state.sel.p){ const cur = jobs.projects.find(p=>p.id===state.sel.p); if(cur){ proj = cur; fixSel(); } else if(state.view!=='projects'){ proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.edit = null; state.view = 'projects'; } }
+    cloudMsg = conflicts ? 'Synced, but '+conflicts+' project'+(conflicts===1?'':'s')+' changed elsewhere. Syncing again shortly.' : (photoFails ? 'Synced. '+photoFails+' photo'+(photoFails===1?'':'s')+' still to transfer.' : '');
+    if(state.view!=='incident' && !state.sheet) render();
+    else setCloudMsg(cloudMsg);
+    if(conflicts || photoFails){ clearTimeout(resyncTimer); resyncTimer = setTimeout(()=>syncNow(false), 15000); }
+    if(manual && !conflicts && !photoFails) toast('Synced.');
+  }catch(err){
+    console.error(err);
+    if(err.message==='auth' || err.status===401){ prefs.cloud.session = null; await sset('prefs:main', JSON.stringify(prefs)); setCloudMsg('Signed out. Sign in again in Settings.'); if(manual) toast('Signed out. Sign in again in Settings.'); }
+    else if(err.status===404 || (err.body||'').indexOf('projects')>=0 && err.status>=400 && err.status<500){ setCloudMsg('Sync failed: the cloud tables are missing. Run the setup script in Supabase.'); if(manual) toast('The cloud tables are missing. Run the setup script in Supabase.'); }
+    else { setCloudMsg('Sync failed. Will retry.'); if(manual) toast("Couldn't sync. Check your signal and try again."); clearTimeout(resyncTimer); resyncTimer = setTimeout(()=>syncNow(false), 30000); }
+  }finally{ syncing = false; }
+}
+async function cloudSignIn(){
+  const s = state.sheet, url = (s.cUrl||'').trim().replace(/\/+$/,''), key = (s.cKey||'').trim(), email = (s.cEmail||'').trim(), pass = s.cPass||'';
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && !/^http:\/\/localhost(:\d+)?$/i.test(url)){ toast('The project URL should look like https://abcd.supabase.co'); return; }
+  if(!key || !email || !pass){ toast('Fill in all four boxes.'); return; }
+  toast('Signing in...');
+  try{
+    const res = await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass})});
+    if(!res.ok){ toast(res.status===400||res.status===401 ? 'Sign-in failed. Check the email and password, and that you created the user in Supabase.' : 'Sign-in error ('+res.status+').'); return; }
+    const j = await res.json();
+    prefs.cloud = {url:url,key:key,email:email,session:{access:j.access_token,refresh:j.refresh_token,expires:Date.now()+(j.expires_in||3600)*1000,uid:j.user&&j.user.id}};
+    await sset('prefs:main', JSON.stringify(prefs));
+    state.sheet = null; render(); toast('Signed in. Syncing...'); syncNow(true);
+  }catch(e){ toast("Couldn't reach Supabase. Check the URL and your signal."); }
+}
+async function cloudSignOut(){
+  if(prefs.cloud) prefs.cloud.session = null;
+  cloudState = {base:{},meta:{},photosUp:{}}; cloudMsg = '';
+  await sset('prefs:main', JSON.stringify(prefs)); await saveCloudState();
+  state.sheet = null; render(); toast('Signed out. Your records stay on this device.');
+}
+
+
+function cloudBlock(s){
+  const c = prefs.cloud || {};
+  if(c.session){
+    return '<h3 style="margin-top:0">Cloud sync</h3><p class="sub" style="margin-bottom:10px">Signed in as '+esc(c.email)+'. '+esc(cloudStatusText())+'</p>'
+      +'<div class="sheetactions" style="margin-bottom:8px"><button class="btn ghost" data-action="cloud-signout">Sign out</button><button class="btn" data-action="cloud-sync">Sync now</button></div>';
+  }
+  return '<h3 style="margin-top:0">Cloud sync</h3><p class="sub" style="margin-bottom:12px">Keeps your projects and photos in your own Supabase project so you can use several devices. Create the project and your user in Supabase first.</p>'
+    +'<label class="field"><span>Supabase project URL</span><input type="text" data-s="cUrl" value="'+esc(s.cUrl)+'" placeholder="https://abcd1234.supabase.co" autocomplete="off" autocapitalize="none"></label>'
+    +'<label class="field"><span>Public (anon or publishable) key</span><input type="text" data-s="cKey" value="'+esc(s.cKey)+'" autocomplete="off" autocapitalize="none"></label>'
+    +'<label class="field"><span>Email</span><input type="text" data-s="cEmail" value="'+esc(s.cEmail)+'" autocomplete="off" autocapitalize="none"></label>'
+    +'<label class="field"><span>Password</span><input type="password" data-s="cPass" value="'+esc(s.cPass)+'" autocomplete="off"></label>'
+    +'<button class="btn block" data-action="cloud-signin">Sign in</button>';
+}
+
 /* ---------- events ---------- */
 document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
-    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||''}; renderSheet(); break;
+    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:''}; renderSheet(); break;
+    case 'cloud-signin': cloudSignIn(); break;
+    case 'cloud-signout': cloudSignOut(); break;
+    case 'cloud-sync': syncNow(true); break;
     case 'save-settings': saveSettings().then(ok=>{ if(ok){ state.sheet = null; render(); toast(aiEnabled()?'Saved. The AI button is on.':'Saved. The AI button is off.'); } }); break;
     case 'test-ai': testAi(); break;
     case 'clear-ai': prefs.aiUrl = ''; prefs.aiCode = ''; prefs.aiKey = ''; sset('prefs:main', JSON.stringify(prefs)); state.sheet = null; render(); toast('AI assistant turned off. Copy for Claude still works.'); break;
@@ -1261,7 +1501,7 @@ document.addEventListener('click', ev=>{
     case 'mark-synced': if(state.sheet && state.sheet.syncAt) markSynced(state.sheet.syncAt); break;
     case 'sync-icon': {
       const inc = curU().incidents.find(x=>x.id===t.dataset.id);
-      if(inc && isSynced(inc)) toast('Already backed up'); else makeBackup(); break; }
+      if(inc && isSynced(inc)) toast(cloudOn()?'Already in the cloud':'Already backed up'); else if(cloudOn()) syncNow(true); else makeBackup(); break; }
     case 'sync-now': state.sheet = null; renderSheet(); makeBackup(); break;
     case 'edit-incident': { const id = state.sheet.id; state.sheet = null; renderSheet(); openIncident(id); break; }
     case 'share-report': {
@@ -1370,7 +1610,11 @@ document.addEventListener('keydown', ev=>{
     }catch(e){}
   }
   const pv = await sget('prefs:main'); if(pv){ try{ prefs = Object.assign(prefs, JSON.parse(pv)); }catch(e){} }
+  const cs = await sget('cloud:state'); if(cs){ try{ cloudState = Object.assign(cloudState, JSON.parse(cs)); }catch(e){} }
   render(true);
+  if(cloudOn()) setTimeout(()=>syncNow(false), 600);
+  window.addEventListener('online', ()=>{ if(cloudOn()) syncNow(false); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && cloudOn() && Date.now()-((prefs.cloud&&prefs.cloud.lastSync)||0) > 60000) syncNow(false); });
 })();
 </script>
 </body>
