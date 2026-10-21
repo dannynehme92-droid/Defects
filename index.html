@@ -392,7 +392,7 @@ function renderIncident(){
     +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
     +f('area','Area','line')+f('description','Description')+f('causes','Causes')
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="suggest-open">Suggest breach and scope wording</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Adds starting wording from a list of common defects. Confirm every clause before you rely on it.</p>'
-    +(prefs.aiUrl?'<button class="btn block" style="margin:0 0 10px" data-action="ai-improve">Improve with AI</button>':'')
+    +(aiEnabled()?'<button class="btn block" style="margin:0 0 10px" data-action="ai-improve">Improve with AI</button>':'')
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="copy-claude">Copy for Claude</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Copies your notes and the project details so you can paste them into the Claude app and ask for a professional write-up.</p>'
     +f('breach','Breach')+f('scope','Scope of rectification')
     +'<div class="field"><span>Photos'+(d.photos.length?' ('+d.photos.length+')':'')+'</span>'
@@ -462,13 +462,15 @@ function renderSheet(){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Settings</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<h3 style="margin-top:0">AI assistant (optional)</h3>'
-      +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. It needs your own AI server address. Leave this blank to use only Copy for Claude. Clearing it removes the button.</p>'
-      +'<label class="field"><span>AI server address</span><input type="text" data-s="aiUrl" value="'+esc(s.aiUrl)+'" placeholder="https://your-worker.example.workers.dev" autocomplete="off" autocapitalize="none"></label>'
-      +'<label class="field"><span>Access code</span><input type="text" data-s="aiCode" value="'+esc(s.aiCode)+'" autocomplete="off" autocapitalize="none"></label>'
+      +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. Paste your Anthropic API key below. It is stored only on this device, and the app talks to Anthropic directly. Set a monthly spending limit in your Anthropic account. Clearing the key removes the button.</p>'
+      +'<label class="field"><span>Anthropic API key</span><input type="password" data-s="aiKey" value="'+esc(s.aiKey)+'" placeholder="sk-ant-..." autocomplete="off" autocapitalize="none"></label>'
+      +'<details style="margin:0 0 16px"><summary class="sub">Advanced: use your own server instead</summary>'
+      +'<label class="field" style="margin-top:12px"><span>AI server address</span><input type="text" data-s="aiUrl" value="'+esc(s.aiUrl)+'" placeholder="https://your-worker.example.workers.dev" autocomplete="off" autocapitalize="none"></label>'
+      +'<label class="field"><span>Access code</span><input type="text" data-s="aiCode" value="'+esc(s.aiCode)+'" autocomplete="off" autocapitalize="none"></label></details>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="clear-ai">Clear</button><button class="btn ghost" data-action="test-ai">Test connection</button><button class="btn" data-action="save-settings">Save</button></div></div>';
   } else if(s.type==='ai-confirm'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">Send this incident to the AI assistant?</h2>'
-      +'<p class="sub" style="margin:8px 0 18px">Your notes, the project address and up to four photos from this incident are sent to your AI server and on to Anthropic to write the suggestions. Do not use this if the report is confidential and you are not allowed to share it.</p>'
+      +'<p class="sub" style="margin:8px 0 18px">Your notes, the project address and up to four photos from this incident are sent to Anthropic to write the suggestions. Do not use this if the report is confidential and you are not allowed to share it.</p>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="ai-confirm-yes">Send</button></div></div>';
   } else if(s.type==='ai-review'){
     const r = s.r;
@@ -1103,11 +1105,62 @@ function sanitizeAi(r){
   return out;
 }
 function aiImprove(){
-  if(!prefs.aiUrl){ toast('Add the AI server address in Settings first.'); return; }
+  if(!aiEnabled()){ toast('Add your API key in Settings first.'); return; }
   const d = state.edit.draft;
   if(!(d.description||'').trim() && !(d.area||'').trim() && !d.photos.length){ toast('Add some notes or a photo first.'); return; }
   if(!prefs.aiOk){ state.sheet = {type:'ai-confirm'}; renderSheet(); return; }
   runAi();
+}
+const AI_MODEL = 'claude-sonnet-5-5';
+const AI_API = 'https://api.anthropic.com/v1/messages';
+const AI_SYSTEM = [
+  'You help Australian building defect inspectors write up defects.',
+  'Reply with ONLY a JSON object with these keys:',
+  '  description: string',
+  '  causes: string',
+  '  breachIds: array of up to 3 ids chosen from the library list you are given',
+  '  scopeNote: string (may be empty)',
+  '  checks: array of short strings',
+  'Rules:',
+  '- Rewrite the inspector\'s notes as a professional, objective description of the observed condition, location and extent, in plain Australian English.',
+  '- Use only facts that are in the notes or clearly visible in the photos. Never invent measurements, dates, names or product details.',
+  '- State causes as possible causes unless the inspector has stated them as fact.',
+  '- Do NOT cite NCC or Australian Standard clause numbers. The app adds verified references from its own library.',
+  '- Choose breachIds only from the library list, and only where the defect clearly matches an entry. Otherwise return an empty array.',
+  '- In checks, list things the inspector should verify on site or in the documents before relying on the write-up, such as measurements to take, the NCC edition that applies, or anything unclear in the photos.',
+  '- If photos are provided, describe only what is clearly visible.'
+].join('\n');
+const aiEnabled = () => !!(prefs.aiUrl || prefs.aiKey);
+async function callAi(imgs, signal){
+  const ctx = aiContext(), library = LIB.map(x=>({id:x.id,name:x.name}));
+  if(prefs.aiUrl){
+    const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode:prefs.aiCode||'',context:ctx,images:imgs,library:library}),signal:signal});
+    if(res.status===401) throw new Error('code');
+    if(!res.ok) throw new Error('http');
+    const data = await res.json();
+    if(!data || !data.ok || !data.result) throw new Error('bad');
+    return data.result;
+  }
+  const content = [];
+  imgs.forEach(d=>{ const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/.exec(d); if(m) content.push({type:'image',source:{type:'base64',media_type:m[1],data:m[2]}}); });
+  content.push({type:'text',text:'Defect details (JSON):\n'+JSON.stringify(ctx,null,2)+'\n\nLibrary of defect types you may choose from (use the id values):\n'+library.map(x=>x.id+': '+x.name).join('\n')+'\n\nReturn only the JSON object.'});
+  const res = await fetch(prefs.aiApiBase||AI_API,{method:'POST',signal:signal,
+    headers:{'content-type':'application/json','x-api-key':prefs.aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:AI_MODEL,max_tokens:1500,system:AI_SYSTEM,messages:[{role:'user',content:content}]})});
+  if(res.status===401) throw new Error('key');
+  if(!res.ok){ const err = new Error('api'); err.status = res.status; throw err; }
+  const data = await res.json();
+  const text = (data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('');
+  const i = text.indexOf('{'), j = text.lastIndexOf('}');
+  if(i<0 || j<=i) throw new Error('bad');
+  try{ return JSON.parse(text.slice(i,j+1)); }catch(e){ throw new Error('bad'); }
+}
+function aiErrorText(err){
+  if(err.message==='code') return 'The access code was not accepted.';
+  if(err.message==='key') return 'The API key was not accepted. Check it in Settings.';
+  if(err.message==='api') return 'The AI service returned an error ('+err.status+'). Check your Anthropic account has credit.';
+  if(err.message==='bad') return 'The AI reply could not be read. Please try again.';
+  return "Couldn't reach the AI service. Check your signal"+(prefs.aiUrl?' and the server address':'')+'.';
 }
 async function runAi(){
   const e = state.edit;
@@ -1115,20 +1168,14 @@ async function runAi(){
   try{
     const imgs = [];
     for(const pid of e.draft.photos.slice(0,4)){ const dta = photoCache[pid] || await sget('photo:'+pid); if(dta) imgs.push(dta); }
-    const payload = {accessCode:prefs.aiCode||'',context:aiContext(),images:imgs,library:LIB.map(x=>({id:x.id,name:x.name}))};
     const ctrl = new AbortController(), to = setTimeout(()=>ctrl.abort(),90000);
-    const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
-    clearTimeout(to);
-    if(res.status===401) throw new Error('code');
-    if(!res.ok) throw new Error('http');
-    const data = await res.json();
-    if(!data || !data.ok || !data.result) throw new Error('bad');
+    let raw;
+    try{ raw = await callAi(imgs, ctrl.signal); } finally { clearTimeout(to); }
     if(state.edit!==e) return;
-    state.sheet = {type:'ai-review',r:sanitizeAi(data.result),use:{description:true,causes:true,breach:true,scope:true}};
+    state.sheet = {type:'ai-review',r:sanitizeAi(raw),use:{description:true,causes:true,breach:true,scope:true}};
     renderSheet();
   }catch(err){
-    state.sheet = null; renderSheet();
-    toast(err.message==='code' ? 'The access code was not accepted.' : "Couldn't get a response from the AI server. Check the address, your signal and your API account.");
+    state.sheet = null; renderSheet(); toast(aiErrorText(err));
   }
 }
 function applyAi(){
@@ -1140,21 +1187,31 @@ function applyAi(){
   state.sheet = null; render(); toast('Applied. Review each field before saving.');
 }
 async function saveSettings(){
-  const s = state.sheet, url = (s.aiUrl||'').trim();
-  if(url && !/^https:\/\//i.test(url) && !/^http:\/\/localhost[:\/]/i.test(url)){ toast('The address must start with https://'); return false; }
-  prefs.aiUrl = url; prefs.aiCode = (s.aiCode||'').trim();
+  const s = state.sheet, url = (s.aiUrl||'').trim(), key = (s.aiKey||'').trim();
+  if(url && !/^https:\/\//i.test(url) && !/^http:\/\/localhost[:\/]/i.test(url)){ toast('The server address must start with https://'); return false; }
+  if(key && !/^sk-/.test(key)){ toast('That does not look like an Anthropic API key. It should start with sk-'); return false; }
+  prefs.aiUrl = url; prefs.aiCode = (s.aiCode||'').trim(); prefs.aiKey = key;
   await sset('prefs:main', JSON.stringify(prefs)); return true;
 }
 async function testAi(){
   if(!(await saveSettings())) return;
-  if(!prefs.aiUrl){ toast('Enter the AI server address first.'); return; }
+  if(!aiEnabled()){ toast('Enter your API key first.'); return; }
   toast('Testing the connection...');
   try{
-    const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode:prefs.aiCode||'',ping:true})});
-    if(res.status===401) toast('Reached the server, but the access code was not accepted.');
-    else if(res.ok){ const j = await res.json(); toast(j && j.ok ? 'Connected. The AI assistant is ready.' : 'The server replied, but not as expected.'); }
-    else toast('The server returned an error ('+res.status+').');
-  }catch(err){ toast("Couldn't reach that address."); }
+    if(prefs.aiUrl){
+      const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode:prefs.aiCode||'',ping:true})});
+      if(res.status===401) toast('Reached the server, but the access code was not accepted.');
+      else if(res.ok){ const j = await res.json(); toast(j && j.ok ? 'Connected. The AI assistant is ready.' : 'The server replied, but not as expected.'); }
+      else toast('The server returned an error ('+res.status+').');
+    } else {
+      const res = await fetch(prefs.aiApiBase||AI_API,{method:'POST',
+        headers:{'content-type':'application/json','x-api-key':prefs.aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:AI_MODEL,max_tokens:8,messages:[{role:'user',content:'Reply with OK.'}]})});
+      if(res.status===401) toast('The API key was not accepted.');
+      else if(res.ok) toast('Connected. The AI assistant is ready.');
+      else toast('The AI service returned an error ('+res.status+'). Check your account has credit.');
+    }
+  }catch(err){ toast("Couldn't reach the AI service. Check your signal."); }
 }
 
 /* ---------- events ---------- */
@@ -1162,10 +1219,10 @@ document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
-    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||''}; renderSheet(); break;
-    case 'save-settings': saveSettings().then(ok=>{ if(ok){ state.sheet = null; render(); toast(prefs.aiUrl?'Saved. The AI button is on.':'Saved. The AI button is off.'); } }); break;
+    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||''}; renderSheet(); break;
+    case 'save-settings': saveSettings().then(ok=>{ if(ok){ state.sheet = null; render(); toast(aiEnabled()?'Saved. The AI button is on.':'Saved. The AI button is off.'); } }); break;
     case 'test-ai': testAi(); break;
-    case 'clear-ai': prefs.aiUrl = ''; prefs.aiCode = ''; sset('prefs:main', JSON.stringify(prefs)); state.sheet = null; render(); toast('AI assistant turned off. Copy for Claude still works.'); break;
+    case 'clear-ai': prefs.aiUrl = ''; prefs.aiCode = ''; prefs.aiKey = ''; sset('prefs:main', JSON.stringify(prefs)); state.sheet = null; render(); toast('AI assistant turned off. Copy for Claude still works.'); break;
     case 'ai-improve': aiImprove(); break;
     case 'ai-confirm-yes': prefs.aiOk = true; sset('prefs:main', JSON.stringify(prefs)); runAi(); break;
     case 'ai-apply': applyAi(); break;
