@@ -142,6 +142,8 @@ a.btn{text-decoration:none}
 .dots.sync.ok{color:var(--ok)}
 .dots.sync.bad{color:var(--red)}
 .thead.i-cols{padding-right:88px}
+.aipreview{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 12px;background:var(--raised);white-space:pre-wrap;font-size:15px;max-height:200px;overflow:auto}
+.aichecks{margin:0 0 14px;padding-left:20px;font-size:15px}
 .linkbtn{background:none;border:0;color:var(--primary);font-weight:650;padding:10px 4px;min-height:44px;text-decoration:underline}
 .sheet h3{font-size:16px;margin:20px 0 6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -166,6 +168,7 @@ const ICON = {
   incident:'<path d="M9 4h6v3H9zM7 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1M9 12h6M9 16h4"/>',
   gallery:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l4-4 4 4 3-3 5 5M9 9h.01"/>',
   sync:'<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>',
   backup:'<path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/>',
@@ -281,7 +284,7 @@ function renderProjects(){
   let list = jobs.projects.slice().sort((a,b)=>(b.created||0)-(a.created||0));
   if(f==='wip') list = list.filter(p=>!p.done); else if(f==='done') list = list.filter(p=>p.done);
   if(q) list = list.filter(p=>(p.address+' '+(p.initials||'')).toLowerCase().indexOf(q)>=0);
-  let h = '<header class="topbar"><div class="brand">Defect inspection</div><button class="iconbtn" style="margin-left:auto" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">';
+  let h = '<header class="topbar"><div class="brand">Defect inspection</div><button class="iconbtn" style="margin-left:auto" data-action="settings-open" aria-label="Settings">'+icon('settings')+'</button><button class="iconbtn" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">';
   h += '<section class="card p"><div class="chead"><span class="tile">'+icon('folder')+'</span><h2>Projects</h2><button class="addbtn" data-action="new-project">'+icon('plus',16)+'<span>Project</span></button></div>'
     +'<p class="sub" style="margin:-2px 2px 12px">All your jobs are listed here.</p>'
     +'<div class="search"><input type="search" data-search value="'+esc(state.ui.q)+'" placeholder="Search by address" aria-label="Search projects" autocomplete="off">'+icon('search',20)+'</div>'
@@ -389,6 +392,8 @@ function renderIncident(){
     +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
     +f('area','Area','line')+f('description','Description')+f('causes','Causes')
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="suggest-open">Suggest breach and scope wording</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Adds starting wording from a list of common defects. Confirm every clause before you rely on it.</p>'
+    +(prefs.aiUrl?'<button class="btn block" style="margin:0 0 10px" data-action="ai-improve">Improve with AI</button>':'')
+    +'<button class="btn ghost block" style="margin:0 0 6px" data-action="copy-claude">Copy for Claude</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Copies your notes and the project details so you can paste them into the Claude app and ask for a professional write-up.</p>'
     +f('breach','Breach')+f('scope','Scope of rectification')
     +'<div class="field"><span>Photos'+(d.photos.length?' ('+d.photos.length+')':'')+'</span>'
     +(d.photos.length?'<div class="thumbs">'+photos+'</div>':'<p class="sub">Use the gallery or camera button to add photos.</p>')+'</div>'
@@ -453,6 +458,31 @@ function renderSheet(){
       +'<div class="search"><input type="search" data-lib value="'+esc(s.q||'')+'" placeholder="Search defect types" aria-label="Search defect types" autocomplete="off">'+icon('search',20)+'</div>'
       +(items.length ? '<div class="menulist">'+items.map(x=>'<button class="btn ghost" style="text-align:left;justify-content:flex-start;height:auto;padding:12px 16px" data-action="pick-lib" data-id="'+x.id+'">'+esc(x.name)+'</button>').join('')+'</div>' : '<p class="empty">No match.</p>')
       +'</div>';
+  } else if(s.type==='settings'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">Settings</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<h3 style="margin-top:0">AI assistant (optional)</h3>'
+      +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. It needs your own AI server address. Leave this blank to use only Copy for Claude. Clearing it removes the button.</p>'
+      +'<label class="field"><span>AI server address</span><input type="text" data-s="aiUrl" value="'+esc(s.aiUrl)+'" placeholder="https://your-worker.example.workers.dev" autocomplete="off" autocapitalize="none"></label>'
+      +'<label class="field"><span>Access code</span><input type="text" data-s="aiCode" value="'+esc(s.aiCode)+'" autocomplete="off" autocapitalize="none"></label>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="clear-ai">Clear</button><button class="btn ghost" data-action="test-ai">Test connection</button><button class="btn" data-action="save-settings">Save</button></div></div>';
+  } else if(s.type==='ai-confirm'){
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">Send this incident to the AI assistant?</h2>'
+      +'<p class="sub" style="margin:8px 0 18px">Your notes, the project address and up to four photos from this incident are sent to your AI server and on to Anthropic to write the suggestions. Do not use this if the report is confidential and you are not allowed to share it.</p>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="ai-confirm-yes">Send</button></div></div>';
+  } else if(s.type==='ai-review'){
+    const r = s.r;
+    const block = (k,label,text,empty) => '<label class="check"><input type="checkbox" data-ai="'+k+'"'+(s.use[k]&&text?' checked':'')+(text?'':' disabled')+'><span>'+label+'</span></label>'
+      +'<div class="aipreview">'+(text?esc(text):'<span class="sub">'+esc(empty)+'</span>')+'</div>';
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">AI suggestions</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<p class="sub" style="margin-bottom:12px;color:var(--hazard)">Check everything before you rely on it. Breach references come from the app\'s own list, not from the AI. Ticked items replace what is in those fields.</p>'
+      +block('description','Description',r.description,'No description returned.')
+      +block('causes','Causes',r.causes,'No causes returned.')
+      +block('breach','Breach (references from the app list)',r.breachText,'No matching entry in the list, so the breach is left as it is.')
+      +block('scope','Scope of rectification',r.scopeText,'No scope returned.')
+      +(r.checks.length?'<h3 style="margin-top:4px">Check before relying on this</h3><ul class="aichecks">'+r.checks.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul>':'')
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="ai-apply">Apply ticked</button></div></div>';
   } else if(s.type==='backup'){
     let nPr = jobs.projects.length, nB = 0, nI = 0, nP = 0;
     jobs.projects.forEach(pj=>pj.buildings.forEach(b=>{ nB++; b.units.forEach(u=>u.incidents.forEach(i=>{ nI++; nP += i.photos.length; })); }));
@@ -715,6 +745,22 @@ function wet(id,name,cl,scope,ov){
     std:[Object.assign({},AS3740,{cl:cl?{'2022':cl}:{}})],scope:scope};
 }
 const WET_SCOPE_END = ['Flood test and record the result before covering.','Re-lay finishes and reseal junctions.','Provide written certification of the waterproofing work on completion.','Extent of works: [CONFIRM EXTENT].'];
+const AS3600 = {n:'AS 3600',t:'Concrete structures',ed:{'2022':'2018'}};
+const AS1379 = {n:'AS 1379',t:'Specification and supply of concrete'};
+const AS3610 = {n:'AS 3610.1',t:'Formwork for concrete'};
+const AS4671 = {n:'AS/NZS 4671',t:'Steel for the reinforcement of concrete'};
+const CONC_NCC = {
+  '2022':{v1:{t:'Performance Requirements B1P1 (Structural reliability) and B1P2 (Structural resistance); Deemed-to-Satisfy Provision B1D4 (Determination of structural resistance of materials and forms of construction)',r:'B1P1 requires the building to perform adequately under the actions it can reasonably be expected to face, with appropriate reliability. B1P2 requires structural resistance to be determined using five percentile characteristic material properties. B1D4 refers concrete construction, including reinforced and prestressed concrete, to AS 3600.'},
+          v2:{t:'Performance Requirement H1P1 (Structural reliability and resistance); Deemed-to-Satisfy Provision H1D4 (Concrete construction, including slabs and footings)'}},
+  '2019':{v1:'Performance Requirements BP1.1 (Structural reliability) and BP1.2 (Structural resistance); B1.4 (Determination of structural resistance of materials and forms of construction)',
+          v2:'Clause 3.0.4 (Determination of structural resistance of materials and forms of construction)'}
+};
+function conc(id,name,cl,scope,more){
+  const ncc = JSON.parse(JSON.stringify(CONC_NCC));
+  return {id:id,name:name,fb:'structural provisions (Section B)',ncc:ncc,
+    std:[Object.assign({},AS3600,{cl:{'2022':cl}})].concat(more||[]),scope:scope};
+}
+const CONC_END = ['Provide the engineer\'s written certification of the completed repair.','Extent of works: [CONFIRM EXTENT].'];
 const LIB = [
   wet('wet','Waterproofing: bathrooms, laundries and wet areas (general)',null,
     ['Remove affected tiles, bedding and screed as required to expose the substrate and membrane.','Repair the substrate and install a compliant waterproofing system, including flashings, upstands, bond breakers and floor waste connections, in accordance with the standard and the membrane manufacturer\'s specification.'].concat(WET_SCOPE_END)),
@@ -771,6 +817,23 @@ const LIB = [
                 v2:'Clause 3.0.4 (Determination of structural resistance of materials and forms of construction)'}},
    std:[{n:'AS 3600',t:'Concrete structures'}],
    scope:['Engage a structural engineer to assess the cause and extent and to specify the repair.','Carry out the repair in accordance with the engineer\'s specification, including treatment of exposed or corroded reinforcement where present.','Monitor and re-inspect as the engineer directs.','Extent of works: [CONFIRM EXTENT].']},
+  conc('conccol','Concrete columns: cracking, spalling, cover and alignment','Section 10 (design of columns for strength and serviceability), Section 4 (design for durability, including cover) and Section 17 (material and construction requirements)',
+    ['Engage a structural engineer to assess the column, including the cause of the defect and whether temporary propping is needed.','Carry out the repair as the engineer specifies, which may include removing defective concrete, cleaning and protecting exposed reinforcement, and reinstating cover with a compatible repair system.','Re-check column position, plumb and reinforcement cover after repair.'].concat(CONC_END),[AS4671]),
+  conc('concwall','Concrete walls: cracking, honeycombing, joints and cover','Section 11 (design of walls), clause 5.7 (fire resistance periods for walls), Section 4 (design for durability) and Section 17 (material and construction requirements)',
+    ['Engage a structural engineer to assess the wall, including the cause and extent of cracking, honeycombing or joint defects.','Carry out the repair as the engineer specifies, which may include crack injection, removal and replacement of defective concrete, sealing of construction joints and reinstating cover.','Test or monitor the repair as the engineer directs.'].concat(CONC_END),[AS1379]),
+  conc('concslab','Suspended slabs: cracking, deflection and shear','Section 9 (design of slabs for strength and serviceability), including clauses 9.3 (strength of slabs in shear), 9.4 (deflection of slabs), 9.5 (crack control of slabs) and 9.6 (vibration of slabs)',
+    ['Engage a structural engineer to assess the slab, including measured deflection, crack widths and locations, and the likely cause (such as bar position, cover, concrete strength or early loading).','Carry out remediation as the engineer specifies, which may include crack repair, strengthening or propping, with monitoring afterwards.','Where deflection or falls cause ponding or damage to finishes, correct them as the engineer and other trades specify.'].concat(CONC_END)),
+  conc('conccover','Concrete cover and exposed or corroding reinforcement','Section 4 (design for durability, including exposure classification and cover) and clause 17.2 (material and construction requirements for reinforcing steel)',
+    ['Survey the affected areas to measure cover and locate corroding or exposed reinforcement.','Engage a structural engineer to specify the repair, including treatment of the reinforcement and reinstatement of cover.','Carry out the repair as specified, then apply a protective coating where required.'].concat(CONC_END),[AS4671]),
+  conc('concquality','Concrete quality: honeycombing, cold joints, curing and strength','Clause 17.1 (material and construction requirements for concrete and grout)',
+    ['Test the concrete (for example cores and non-destructive testing) to confirm strength and extent of the defect.','Engage a structural engineer to assess the results and specify the repair or replacement.','Carry out the repair as specified and retest where required.'].concat(CONC_END),[AS1379,AS3610]),
+  conc('concpt','Post-tensioned slabs and tendons','Clause 17.3 (material and construction requirements for prestressing ducts, anchorages and tendons) and Section 9 (design of slabs for strength and serviceability)',
+    ['Engage a structural engineer experienced in post-tensioned construction to assess the slab, tendons and anchorages.','Do not cut, drill or core near tendons until the engineer confirms locations.','Carry out the repair as the engineer specifies, with certification on completion.'].concat(['Extent of works: [CONFIRM EXTENT].'])),
+  {id:'concfire',name:'Concrete elements: fire resistance (columns, walls, slabs)',fb:'fire resistance and stability (Section C)',
+   ncc:{'2022':{v1:{t:'Performance Requirement C1P1 (Structural stability during a fire), and for concrete external walls C1P5 (Behaviour of concrete external walls in a fire); Deemed-to-Satisfy Provisions C2D2 (Type of construction required) and Specification 5 (Fire-resisting construction)',r:'C2D2(2) requires building elements to comply with Specification 5 for the type of construction that Table C2D2 requires. Under S5C3, a part of the building that gives vertical or lateral support to an element required to have a fire-resistance level must itself have at least the level required.'}},
+        '2019':{v1:'Performance Requirement CP1 (Structural stability during a fire), and for concrete external walls CP5 (Behaviour of concrete external walls in a fire); C1.1 (Type of construction required) and Specification C1.1 (Fire-resisting construction)'}},
+   std:[Object.assign({},AS3600,{cl:{'2022':'Section 5 (design for fire resistance), including clause 5.7 (fire resistance periods for walls)'}})],
+   scope:['Engage a fire engineer or structural engineer to confirm the fire-resistance level required for each affected element.','Check member size and reinforcement cover against the required level, and rectify or protect the element as specified.','Provide certification of the completed work.','Extent of works: [CONFIRM EXTENT].']},
   {id:'masonry',name:'Masonry walls: cracking, mortar and movement',fb:'structural provisions for masonry',
    ncc:{'2022':{v1:{t:'Performance Requirements B1P1 (Structural reliability) and B1P2 (Structural resistance); Deemed-to-Satisfy Provision B1D4 (Determination of structural resistance of materials and forms of construction)',r:'B1D4 refers masonry, including masonry veneer and unreinforced and reinforced masonry, to AS 3700.'},
                   v2:{t:'Performance Requirement H1P1 (Structural reliability and resistance); Deemed-to-Satisfy Provision H1D5 (Masonry)'}},
@@ -989,11 +1052,124 @@ async function doRestore(parsed){
   }catch(err){ console.error(err); state.sheet = null; render(true); toast("Couldn't restore the backup."); }
 }
 
+/* ---------- AI assistant (optional) and Copy for Claude ---------- */
+async function copyTextSafe(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(_){}
+    ta.remove(); return ok;
+  }
+}
+function aiContext(){
+  const d = state.edit.draft, b = curB(), u = curU();
+  return {
+    project:{address:proj.address||'',buildingClass:proj.cls==='1'?'Class 1 (NCC Volume Two)':proj.cls==='2'?'Class 2 (NCC Volume One)':proj.cls==='other'?'Other class':'not set',
+             codeEdition:proj.ncc==='older'?'BCA 2015 or earlier':proj.ncc?'NCC '+proj.ncc:'not set'},
+    building:b?b.name:'', unitOrLocation:u?u.name:'',
+    incident:{area:d.area||'',description:d.description||'',causes:d.causes||'',breach:d.breach||'',scope:d.scope||''}
+  };
+}
+function buildClaudePrompt(){
+  const c = aiContext(), i = c.incident;
+  return [
+    'I am a building defect inspector in Australia. Please help me write up a defect.',
+    '',
+    'Property: '+c.project.address,
+    'Building class: '+c.project.buildingClass,
+    'Code edition that applies: '+c.project.codeEdition,
+    'Building: '+c.building+'. Unit or location: '+c.unitOrLocation,
+    'Area: '+i.area,
+    'My notes: '+i.description,
+    'Causes noted: '+(i.causes||'none yet'),
+    '',
+    'Please:',
+    '1. Rewrite my notes as a professional, objective defect description (observed condition, location and extent). Do not add measurements or facts I have not given.',
+    '2. Give the likely cause or causes, as possibilities where uncertain.',
+    '3. Identify the NCC provisions and Australian Standards this defect may breach for the edition and class above. Give clause numbers only if you can verify them from the NCC website or another reliable source, and say clearly where you could not.',
+    '4. Suggest a scope of rectification.',
+    '5. List anything I should check on site before relying on this.'
+  ].join('\n');
+}
+function sanitizeAi(r){
+  const str = (v,n) => (typeof v==='string' ? v.trim().slice(0,n) : '');
+  const ids = (Array.isArray(r.breachIds)?r.breachIds:[]).filter(x=>typeof x==='string' && LIB.some(l=>l.id===x)).slice(0,3);
+  const checks = (Array.isArray(r.checks)?r.checks:[]).filter(x=>typeof x==='string').map(x=>x.trim().slice(0,300)).filter(Boolean).slice(0,8);
+  const out = {description:str(r.description,3000),causes:str(r.causes,2000),breachIds:ids,scopeNote:str(r.scopeNote,1500),checks:checks};
+  const parts = ids.map(id=>suggestFor(LIB.find(x=>x.id===id), proj));
+  out.breachText = parts.map(p=>p.breach).join('\n\n');
+  out.scopeText = (parts[0] ? parts[0].scope : '') + (out.scopeNote ? (parts[0]?'\n\n':'')+'Site-specific notes: '+out.scopeNote : '');
+  return out;
+}
+function aiImprove(){
+  if(!prefs.aiUrl){ toast('Add the AI server address in Settings first.'); return; }
+  const d = state.edit.draft;
+  if(!(d.description||'').trim() && !(d.area||'').trim() && !d.photos.length){ toast('Add some notes or a photo first.'); return; }
+  if(!prefs.aiOk){ state.sheet = {type:'ai-confirm'}; renderSheet(); return; }
+  runAi();
+}
+async function runAi(){
+  const e = state.edit;
+  state.sheet = {type:'working',title:'Asking the AI assistant',body:'This can take up to a minute.'}; renderSheet();
+  try{
+    const imgs = [];
+    for(const pid of e.draft.photos.slice(0,4)){ const dta = photoCache[pid] || await sget('photo:'+pid); if(dta) imgs.push(dta); }
+    const payload = {accessCode:prefs.aiCode||'',context:aiContext(),images:imgs,library:LIB.map(x=>({id:x.id,name:x.name}))};
+    const ctrl = new AbortController(), to = setTimeout(()=>ctrl.abort(),90000);
+    const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal});
+    clearTimeout(to);
+    if(res.status===401) throw new Error('code');
+    if(!res.ok) throw new Error('http');
+    const data = await res.json();
+    if(!data || !data.ok || !data.result) throw new Error('bad');
+    if(state.edit!==e) return;
+    state.sheet = {type:'ai-review',r:sanitizeAi(data.result),use:{description:true,causes:true,breach:true,scope:true}};
+    renderSheet();
+  }catch(err){
+    state.sheet = null; renderSheet();
+    toast(err.message==='code' ? 'The access code was not accepted.' : "Couldn't get a response from the AI server. Check the address, your signal and your API account.");
+  }
+}
+function applyAi(){
+  const s = state.sheet, r = s.r, d = state.edit.draft;
+  if(s.use.description && r.description) d.description = r.description;
+  if(s.use.causes && r.causes) d.causes = r.causes;
+  if(s.use.breach && r.breachText) d.breach = r.breachText;
+  if(s.use.scope && r.scopeText) d.scope = r.scopeText;
+  state.sheet = null; render(); toast('Applied. Review each field before saving.');
+}
+async function saveSettings(){
+  const s = state.sheet, url = (s.aiUrl||'').trim();
+  if(url && !/^https:\/\//i.test(url) && !/^http:\/\/localhost[:\/]/i.test(url)){ toast('The address must start with https://'); return false; }
+  prefs.aiUrl = url; prefs.aiCode = (s.aiCode||'').trim();
+  await sset('prefs:main', JSON.stringify(prefs)); return true;
+}
+async function testAi(){
+  if(!(await saveSettings())) return;
+  if(!prefs.aiUrl){ toast('Enter the AI server address first.'); return; }
+  toast('Testing the connection...');
+  try{
+    const res = await fetch(prefs.aiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode:prefs.aiCode||'',ping:true})});
+    if(res.status===401) toast('Reached the server, but the access code was not accepted.');
+    else if(res.ok){ const j = await res.json(); toast(j && j.ok ? 'Connected. The AI assistant is ready.' : 'The server replied, but not as expected.'); }
+    else toast('The server returned an error ('+res.status+').');
+  }catch(err){ toast("Couldn't reach that address."); }
+}
+
 /* ---------- events ---------- */
 document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
   const a = t.dataset.action;
   switch(a){
+    case 'settings-open': state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||''}; renderSheet(); break;
+    case 'save-settings': saveSettings().then(ok=>{ if(ok){ state.sheet = null; render(); toast(prefs.aiUrl?'Saved. The AI button is on.':'Saved. The AI button is off.'); } }); break;
+    case 'test-ai': testAi(); break;
+    case 'clear-ai': prefs.aiUrl = ''; prefs.aiCode = ''; sset('prefs:main', JSON.stringify(prefs)); state.sheet = null; render(); toast('AI assistant turned off. Copy for Claude still works.'); break;
+    case 'ai-improve': aiImprove(); break;
+    case 'ai-confirm-yes': prefs.aiOk = true; sset('prefs:main', JSON.stringify(prefs)); runAi(); break;
+    case 'ai-apply': applyAi(); break;
+    case 'copy-claude': copyTextSafe(buildClaudePrompt()).then(ok=>toast(ok?'Copied. Paste it into the Claude app.':"Couldn't copy.")); break;
     case 'suggest-open': state.sheet = {type:'suggest',q:''}; renderSheet(); break;
     case 'pick-lib': {
       const entry = LIB.find(x=>x.id===t.dataset.id), r = suggestFor(entry, proj), d = state.edit.draft;
@@ -1091,6 +1267,7 @@ document.addEventListener('input', ev=>{
   const t = ev.target;
   if(t.dataset.f && state.edit) state.edit.draft[t.dataset.f] = t.value;
   else if(t.dataset.p && state.sheet && state.sheet.type==='project') state.sheet[t.dataset.p] = t.value;
+  else if(t.dataset.s && state.sheet && state.sheet.type==='settings') state.sheet[t.dataset.s] = t.value;
   else if(t.dataset.lib !== undefined && state.sheet && state.sheet.type==='suggest'){
     state.sheet.q = t.value; renderSheet();
     const el = document.querySelector('[data-lib]'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
@@ -1104,6 +1281,7 @@ document.addEventListener('input', ev=>{
 document.addEventListener('change', ev=>{
   const t = ev.target;
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
+  if(t.dataset.ai && state.sheet && state.sheet.type==='ai-review') state.sheet.use[t.dataset.ai] = t.checked;
   if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files); }
   if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
