@@ -1146,7 +1146,7 @@ async function callAi(imgs, signal){
   content.push({type:'text',text:'Defect details (JSON):\n'+JSON.stringify(ctx,null,2)+'\n\nLibrary of defect types you may choose from (use the id values):\n'+library.map(x=>x.id+': '+x.name).join('\n')+'\n\nReturn only the JSON object.'});
   const res = await fetch(prefs.aiApiBase||AI_API,{method:'POST',signal:signal,
     headers:{'content-type':'application/json','x-api-key':prefs.aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:AI_MODEL,max_tokens:1500,system:AI_SYSTEM,messages:[{role:'user',content:content}]})});
+    body:JSON.stringify({model:AI_MODEL,max_tokens:3000,thinking:{type:'between_tools'},output_config:{effort:'medium'},system:AI_SYSTEM,messages:[{role:'user',content:content}]})});
   if(res.status===401) throw new Error('key');
   if(!res.ok){ const err = new Error('api'); err.status = res.status; throw err; }
   const data = await res.json();
@@ -1206,7 +1206,7 @@ async function testAi(){
     } else {
       const res = await fetch(prefs.aiApiBase||AI_API,{method:'POST',
         headers:{'content-type':'application/json','x-api-key':prefs.aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:AI_MODEL,max_tokens:8,messages:[{role:'user',content:'Reply with OK.'}]})});
+        body:JSON.stringify({model:AI_MODEL,max_tokens:16,thinking:{type:'between_tools'},output_config:{effort:'low'},messages:[{role:'user',content:'Reply with OK.'}]})});
       if(res.status===401) toast('The API key was not accepted.');
       else if(res.ok) toast('Connected. The AI assistant is ready.');
       else toast('The AI service returned an error ('+res.status+'). Check your account has credit.');
