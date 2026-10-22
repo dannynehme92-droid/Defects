@@ -19,6 +19,7 @@
   --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#FBEBCB;
   --red:#C93A33; --red-ink:#FFFFFF; --red-bg:#F8DAD7;
   --cam:#2A2326;
+  --rt-red:#C93A33; --rt-red-ink:#FFFFFF; --rt-yel:#F2C230; --rt-yel-ink:#1B2A34; --rt-grn:#2E9E5B; --rt-grn-ink:#FFFFFF;
   --ok:#277A4B; --ok-ink:#FFFFFF; --ok-bg:#DDEFE5; --off:#66747C;
 }
 @media (prefers-color-scheme: dark){
@@ -30,6 +31,7 @@
     --amber:#E9A93B; --amber-ink:#1B2A34; --amber-bg:#443211;
     --red:#E5645D; --red-ink:#230806; --red-bg:#4A1D1A;
     --cam:#3A3236;
+    --rt-red:#E5645D; --rt-red-ink:#230806; --rt-yel:#F2C94C; --rt-yel-ink:#1B2A34; --rt-grn:#5CC98B; --rt-grn-ink:#0C2417;
     --ok:#6CCB9B; --ok-ink:#0C2417; --ok-bg:#173A2B; --off:#4A5A64;
   }
 }
@@ -146,6 +148,31 @@ a.btn{text-decoration:none}
 .aichecks{margin:0 0 14px;padding-left:20px;font-size:15px}
 .repbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .repbtns .btn{min-height:46px;padding:0 10px}
+.ratebtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ratebtns button{min-height:50px;border-radius:10px;border:2.5px solid var(--line);background:var(--raised);font-weight:750;font-size:16px;color:var(--ink)}
+.ratebtns button.red{border-color:var(--rt-red)}.ratebtns button.yellow{border-color:var(--rt-yel)}.ratebtns button.green{border-color:var(--rt-grn)}
+.ratebtns button.red[aria-pressed=true]{background:var(--rt-red);color:var(--rt-red-ink)}
+.ratebtns button.yellow[aria-pressed=true]{background:var(--rt-yel);color:var(--rt-yel-ink)}
+.ratebtns button.green[aria-pressed=true]{background:var(--rt-grn);color:var(--rt-grn-ink)}
+.rpill{display:inline-block;padding:1px 10px;border-radius:999px;font-size:13px;font-weight:750;margin-left:8px;vertical-align:middle}
+.rpill.red{background:var(--rt-red);color:var(--rt-red-ink)}.rpill.yellow{background:var(--rt-yel);color:var(--rt-yel-ink)}.rpill.green{background:var(--rt-grn);color:var(--rt-grn-ink)}
+.photo .mk{position:absolute;left:-8px;bottom:-8px;width:34px;height:34px;border-radius:50%;border:0;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;padding:0}
+#markup{position:fixed;inset:0;z-index:25;background:#101418;color:#fff;display:flex;flex-direction:column;touch-action:none}
+#markup .mk-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top))}
+#markup .mk-title{font-weight:700}
+#markup .mk-btn{min-height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #3A4650;background:transparent;color:#fff;font-weight:650}
+#markup .mk-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#markup canvas{touch-action:none;background:#000;max-width:100%;max-height:100%}
+#markup .mk-bottom{padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:grid;gap:8px;background:#161C21}
+#markup .mk-row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+#markup .tool{min-height:44px;min-width:70px;padding:0 10px;border-radius:10px;border:1.5px solid #3A4650;background:transparent;color:#fff;font-weight:650}
+#markup .tool[aria-pressed=true]{background:#fff;color:#101418;border-color:#fff}
+#markup .dot{width:34px;height:34px;border-radius:50%;border:3px solid #3A4650;padding:0}
+#markup .dot[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px #101418 inset}
+#markup .wbtn{min-height:44px;min-width:46px;padding:0 8px;font-size:14px;border-radius:10px;border:1.5px solid #3A4650;background:transparent;color:#fff;font-weight:650}
+#markup .wbtn[aria-pressed=true]{background:#fff;color:#101418}
+#markup .mk-act{flex:1 1 150px;min-height:50px;border-radius:10px;border:1.5px solid var(--primary);background:var(--primary);color:var(--primary-ink);font-weight:700}
+#markup .mk-act.ghost{background:transparent;color:#fff;border-color:#fff}
 .linkbtn{background:none;border:0;color:var(--primary);font-weight:650;padding:10px 4px;min-height:44px;text-decoration:underline}
 .sheet h3{font-size:16px;margin:20px 0 6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -160,7 +187,9 @@ a.btn{text-decoration:none}
 <script>
 const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const RATING = {red:{label:'Red',desc:'High priority'},yellow:{label:'Yellow',desc:'Medium priority'},green:{label:'Green',desc:'Low priority'}};
 const ICON = {
+  pencil:'<path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>',
   back:'<path d="M15 5l-7 7 7 7"/>',
   close:'<path d="M6 6l12 12M18 6L6 18"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
@@ -373,7 +402,7 @@ function renderMain(){
     else {
       inner = '<p class="sub" style="margin:0 2px 8px;font-size:14px">Sync icon: <b style="color:var(--ok)">green</b> means saved in the cloud, <b style="color:var(--red)">red</b> means not synced yet.</p><div class="thead i-cols"><span>Area and description</span><span style="text-align:center">Photos</span></div>'
         + u.incidents.map(x=>'<div class="trow i"><button class="rmain i-cols" data-action="open-incident" data-id="'+x.id+'">'
-          +'<span><span class="main">'+esc(x.area||'No area')+'</span>'+(x.description?'<span class="desc" style="display:-webkit-box">'+esc(x.description)+'</span>':'')+'</span>'
+          +'<span><span class="main">'+esc(x.area||'No area')+(x.rating&&RATING[x.rating]?'<span class="rpill '+x.rating+'">'+RATING[x.rating].label+'</span>':'')+'</span>'+(x.description?'<span class="desc" style="display:-webkit-box">'+esc(x.description)+'</span>':'')+'</span>'
           +'<span class="c-n">'+x.photos.length+'</span></button>'
           +'<button class="dots sync '+(isSynced(x)?'ok':'bad')+'" data-action="sync-icon" data-id="'+x.id+'" aria-label="'+(isSynced(x)?'In the cloud':'Not in the cloud yet. Tap to sync')+'">'+icon('sync')+'</button>'
           +'<button class="dots" style="color:var(--muted)" data-action="menu" data-kind="incident" data-id="'+x.id+'" aria-label="Options for '+esc(x.area||'incident')+'">'+icon('dots')+'</button></div>').join('');
@@ -388,12 +417,13 @@ function renderIncident(){
   const e = state.edit, d = e.draft, b = curB(), u = curU();
   const f = (key,label,type) => '<label class="field"><span>'+label+'</span>'
     +(type==='line'?'<input type="text" data-f="'+key+'" value="'+esc(d[key])+'">':'<textarea data-f="'+key+'" rows="4">'+esc(d[key])+'</textarea>')+'</label>';
-  const photos = d.photos.map(p=>'<div class="photo"><button class="open" data-action="view-photo" data-id="'+p+'" aria-label="View photo"><img data-photo="'+p+'" alt="Incident photo"></button>'
+  const photos = d.photos.map(p=>'<div class="photo"><button class="open" data-action="view-photo" data-id="'+p+'" aria-label="View photo"><img data-photo="'+p+'" alt="Incident photo"></button><button class="mk" data-action="mark-photo" data-id="'+p+'" aria-label="Mark up photo">'+icon('pencil',18)+'</button>'
     +'<button class="rm" data-action="rm-photo" data-id="'+p+'" aria-label="Remove photo">'+icon('close',14)+'</button></div>').join('');
   return '<header class="topbar"><button class="back" data-action="back-main">'+icon('back')+'<span>'+esc(u.name)+'</span></button></header>'
     +'<main class="pad"><h1 style="margin-bottom:14px">'+(e.id?'Edit incident':'New incident')+'</h1>'
     +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
     +f('area','Area','line')+f('description','Description')+f('causes','Causes')
+    +'<div class="field"><span id="ratl">Rating</span><div class="ratebtns" role="group" aria-labelledby="ratl">'+['red','yellow','green'].map(k=>'<button class="'+k+'" data-action="rate" data-val="'+k+'" aria-pressed="'+(d.rating===k)+'">'+RATING[k].label+'</button>').join('')+'</div><p class="hint" style="margin-top:8px;font-size:14px;color:var(--muted)">'+(d.rating?esc(RATING[d.rating].label+': '+RATING[d.rating].desc+'. Tap again to clear.'):'Red is high priority, yellow is medium, green is low.')+'</p></div>'
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="suggest-open">Suggest breach and scope wording</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Adds starting wording from a list of common defects. Confirm every clause before you rely on it.</p>'
     +(aiEnabled()?'<button class="btn block" style="margin:0 0 10px" data-action="ai-improve">Improve with AI</button>':'')
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="copy-claude">Copy for Claude</button><p class="hint" style="margin:0 0 16px;font-size:14px;color:var(--muted)">Copies your notes and the project details so you can paste them into the Claude app and ask for a professional write-up.</p>'
@@ -464,6 +494,7 @@ function renderSheet(){
   } else if(s.type==='settings'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Settings</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<h3 style="margin-top:0">Photos</h3><label class="check"><input type="checkbox" data-sc="autoMark"'+(s.autoMark!==false?' checked':'')+'><span>Open the drawing tool after taking a photo</span></label><div style="height:18px"></div>'
       +cloudBlock(s)+'<h3 style="margin-top:24px">AI assistant (optional)</h3>'
       +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. Paste your Anthropic API key below. It is stored only on this device, and the app talks to Anthropic directly. Set a monthly spending limit in your Anthropic account. Clearing the key removes the button.</p>'
       +'<label class="field"><span>Anthropic API key</span><input type="password" data-s="aiKey" value="'+esc(s.aiKey)+'" placeholder="sk-ant-..." autocomplete="off" autocapitalize="none"></label>'
@@ -512,7 +543,7 @@ function renderSheet(){
       +'<button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Close</button></div>';
   } else if(s.type==='photo'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Photo">'
-      +'<img class="bigphoto" data-photo="'+s.id+'" alt="Incident photo"><button class="btn ghost block" data-action="close-sheet">Close</button></div>';
+      +'<img class="bigphoto" data-photo="'+s.id+'" alt="Incident photo">'+(state.edit?'<button class="btn block" style="margin-bottom:10px" data-action="mark-photo" data-id="'+s.id+'">Mark up photo</button>':'')+'<button class="btn ghost block" data-action="close-sheet">Close</button></div>';
   }
   el.innerHTML = h; hydratePhotos();
   const pa = document.getElementById('projAddr'); if(pa && !s.address){ pa.focus(); }
@@ -540,7 +571,7 @@ function photosOfUnit(u){ return u.incidents.reduce((a,i)=>a.concat(i.photos),[]
 function openIncident(id){
   const u = curU(); let draft;
   if(id){ const x = u.incidents.find(i=>i.id===id); draft = Object.assign({},x,{photos:x.photos.slice()}); }
-  else draft = {area:'',description:'',causes:'',breach:'',scope:'',photos:[]};
+  else draft = {area:'',description:'',causes:'',breach:'',scope:'',rating:'',photos:[]};
   state.edit = {id:id||null,draft,added:[],removed:[]}; state.view = 'incident'; render(true);
 }
 function leaveEdit(){ const e = state.edit; if(e) e.added.forEach(deletePhoto); state.edit = null; state.view = 'main'; render(true); }
@@ -548,7 +579,7 @@ function saveIncident(){
   const e = state.edit, d = e.draft, u = curU();
   if(!u){ toast('This unit was deleted on another device, so the incident could not be saved.'); leaveEdit(); return; }
   if(!d.area.trim() && !d.description.trim()){ toast('Add an area or a description.'); return; }
-  const rec = {id:e.id||uid(),area:d.area.trim(),description:d.description.trim(),causes:d.causes.trim(),breach:d.breach.trim(),scope:d.scope.trim(),photos:d.photos.slice(),created:d.created||Date.now()};
+  const rec = {id:e.id||uid(),rating:d.rating||'',area:d.area.trim(),description:d.description.trim(),causes:d.causes.trim(),breach:d.breach.trim(),scope:d.scope.trim(),photos:d.photos.slice(),created:d.created||Date.now()};
   const prev = u.incidents.find(i=>i.id===rec.id);
   rec.modified = Date.now(); rec.synced = prev ? (prev.synced||0) : 0;
   const idx = u.incidents.findIndex(i=>i.id===rec.id);
@@ -556,17 +587,17 @@ function saveIncident(){
   e.removed.forEach(deletePhoto);
   state.edit = null; state.view = 'main'; persist(); render(true); toast('Incident saved');
 }
-async function addPhotos(files){
-  const e = state.edit; if(!e) return;
+async function addPhotos(files,fromCamera){
+  const e = state.edit; if(!e) return; let lastPid = null;
   for(const f of files){
     if(e.draft.photos.length>=12){ toast('Up to 12 photos per incident.'); break; }
     try{
       const data = await compress(f), pid = uid();
       photoCache[pid] = data; await sset('photo:'+pid, data);
-      e.draft.photos.push(pid); e.added.push(pid);
+      e.draft.photos.push(pid); e.added.push(pid); lastPid = pid;
     }catch(err){ toast("That photo couldn't be read."); }
   }
-  if(state.edit===e) render();
+  if(state.edit===e){ render(); if(fromCamera && lastPid && prefs.autoMark!==false) openMarkup(lastPid); }
 }
 
 /* ---------- PDF report ---------- */
@@ -580,6 +611,8 @@ async function makePdf(PDFLib, d){
   const clean = s => Array.from(String(s==null?'':s).replace(/\r/g,'')).map(ch=>{ if(ch==='\n') return ch; if(ch==='\t') return ' '; return ok.has(ch.codePointAt(0)) ? ch : '?'; }).join('');
   const W = 595.28, H = 841.89, MX = 50, TOP = 56, BOT = 62, CW = W-2*MX;
   const INK = rgb(0.106,0.165,0.204), TEAL = rgb(0.184,0.478,0.502), MUTED = rgb(0.32,0.39,0.43), LINE = rgb(0.78,0.82,0.84), RUST = rgb(0.72,0.27,0.18), WHITE = rgb(1,1,1);
+  const LW = 150;
+  const RC = {red:{c:rgb(0.79,0.23,0.20),ink:WHITE,t:'Red (high priority)'},yellow:{c:rgb(0.95,0.76,0.19),ink:INK,t:'Yellow (medium priority)'},green:{c:rgb(0.18,0.62,0.36),ink:WHITE,t:'Green (low priority)'}};
   let page = null, y = 0;
   const newPage = () => { page = doc.addPage([W,H]); y = H-TOP; };
   const need = h => { if(!page || y-h < BOT) newPage(); };
@@ -607,9 +640,18 @@ async function makePdf(PDFLib, d){
     wrap(text,font,size,maxW).forEach(l=>{ need(lead); if(l) page.drawText(l,{x:x,y:y-size,size:size,font:font,color:opt.color||INK}); y -= lead; });
   }
   function gap(h){ y -= h; }
+  function ratingKv(r){
+    const m = RC[r];
+    if(!m){ kv('Rating','Not rated',true); return; }
+    need(26);
+    page.drawText('Rating',{x:MX,y:y-10,size:9.5,font:FB,color:MUTED});
+    page.drawRectangle({x:MX+LW-3,y:y-15,width:170,height:19,color:m.c});
+    page.drawText(m.t,{x:MX+LW+3,y:y-10.5,size:10,font:FB,color:m.ink});
+    y -= 22; page.drawLine({start:{x:MX,y:y+1},end:{x:W-MX,y:y+1},thickness:0.5,color:LINE}); gap(4);
+  }
   function h2(text){ need(40); gap(14); lines(text,{font:FB,size:14,color:TEAL,lead:18}); gap(2); }
   function kv(label,value,empty){
-    const LW = 150, size = 10, lead = 14;
+    const size = 10, lead = 14;
     const val = (value==null||String(value).trim()==='') ? 'Not recorded' : String(value);
     const isEmpty = val==='Not recorded' && !!empty;
     const ls = wrap(val,isEmpty?FI:F,size,CW-LW-6);
@@ -630,6 +672,8 @@ async function makePdf(PDFLib, d){
   kv('Building',d.building.name); kv('Reference',String(d.building.ref)); kv('Report date',d.date);
   if(d.prepared) kv('Prepared by',d.prepared);
   kv('Units / locations',String(d.units.length)); kv('Incidents recorded',String(totalInc));
+  const rc = {red:0,yellow:0,green:0,none:0}; d.units.forEach(u=>u.incidents.forEach(i=>{ rc[RC[i.rating]?i.rating:'none']++; }));
+  kv('Rating summary','Red '+rc.red+', Yellow '+rc.yellow+', Green '+rc.green+(rc.none?', Not rated '+rc.none:''));
   // summary table
   h2('Summary by unit / location');
   if(!d.units.length) lines('No units or locations recorded.',{});
@@ -656,7 +700,7 @@ async function makePdf(PDFLib, d){
     for(const inc of u.incidents){
       n++;
       need(90); gap(6); lines('Incident '+n+(inc.area?': '+inc.area:''),{font:FB,size:11.5,color:RUST,lead:16}); gap(2);
-      kv('Area',inc.area,true); kv('Description',inc.description,true); kv('Causes',inc.causes,true); kv('Breach',inc.breach,true); kv('Scope of rectification',inc.scope,true);
+      kv('Area',inc.area,true); ratingKv(inc.rating); kv('Description',inc.description,true); kv('Causes',inc.causes,true); kv('Breach',inc.breach,true); kv('Scope of rectification',inc.scope,true);
       if(inc.images && inc.images.length){
         need(30); lines('Photos ('+inc.images.length+')',{font:FB,size:10,lead:14}); gap(2);
         const embedded = [];
@@ -723,6 +767,17 @@ function kvRow(label,value){
   var v = value ? wRuns(value) : wRuns('Not recorded','<w:i/><w:color w:val="7A8A93"/>');
   return wRow(wCell(2300,wPara(wRuns(label,'<w:b/>'),CELLP),'EEF2F4')+wCell(7338,wPara(v,CELLP)));
 }
+var RATING_DOC = {red:{fill:'C93A33',ink:'FFFFFF',text:'Red (high priority)'},yellow:{fill:'F2C230',ink:'1B2A34',text:'Yellow (medium priority)'},green:{fill:'2E9E5B',ink:'FFFFFF',text:'Green (low priority)'}};
+function ratingRow(r){
+  var m = RATING_DOC[r];
+  if(!m) return wRow(wCell(2300,wPara(wRuns('Rating','<w:b/>'),CELLP),'EEF2F4')+wCell(7338,wPara(wRuns('Not rated','<w:i/><w:color w:val="7A8A93"/>'),CELLP)));
+  return wRow(wCell(2300,wPara(wRuns('Rating','<w:b/>'),CELLP),'EEF2F4')+wCell(7338,wPara(wRuns(m.text,'<w:b/><w:color w:val="'+m.ink+'"/>'),CELLP),m.fill));
+}
+function ratingCounts(units){
+  var c = {red:0,yellow:0,green:0,none:0};
+  units.forEach(function(u){ u.incidents.forEach(function(i){ c[RATING_DOC[i.rating] ? i.rating : 'none']++; }); });
+  return 'Red '+c.red+', Yellow '+c.yellow+', Green '+c.green+(c.none ? ', Not rated '+c.none : '');
+}
 function wImage(rid,cx,cy,id){
   var nm = 'Photo '+id;
   return '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+id+'" name="'+nm+'"/>'
@@ -745,7 +800,7 @@ function makeDocx(JSZipCtor,d){
   if(d.project && d.project.nccText) kv += kvRow('Code edition assessed against',d.project.nccText);
   kv += kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
   if(d.prepared) kv += kvRow('Prepared by',d.prepared);
-  kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc));
+  kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc))+kvRow('Rating summary',ratingCounts(d.units));
   body += wTable([2300,7338],kv);
 
   body += P('Heading1','Summary by unit / location');
@@ -767,7 +822,7 @@ function makeDocx(JSZipCtor,d){
     u.incidents.forEach(function(inc){
       n++;
       body += wPara(wRuns('Incident '+n+(inc.area?': '+inc.area:'')),'<w:pStyle w:val="Heading3"/>');
-      body += wTable([2300,7338],kvRow('Area',inc.area)+kvRow('Description',inc.description)+kvRow('Causes',inc.causes)+kvRow('Breach',inc.breach)+kvRow('Scope of rectification',inc.scope));
+      body += wTable([2300,7338],kvRow('Area',inc.area)+ratingRow(inc.rating)+kvRow('Description',inc.description)+kvRow('Causes',inc.causes)+kvRow('Breach',inc.breach)+kvRow('Scope of rectification',inc.scope));
       if(inc.images && inc.images.length){
         body += wPara(wRuns('Photos ('+inc.images.length+')','<w:b/>'),'<w:keepNext/><w:spacing w:before="160" w:after="60"/>');
         var inner = '', MAX = 2834640;
@@ -834,7 +889,7 @@ async function prepareReport(id,prepared,withPhotos){
           images.push({data:data,w:dim.w,h:dim.h});
         }
       }
-      incs.push({area:inc.area,description:inc.description,causes:inc.causes,breach:inc.breach,scope:inc.scope,images:images});
+      incs.push({rating:inc.rating||'',area:inc.area,description:inc.description,causes:inc.causes,breach:inc.breach,scope:inc.scope,images:images});
     }
     units.push({name:u.name,incidents:incs});
   }
@@ -1170,7 +1225,7 @@ function parseBackup(o){
           const ph = (Array.isArray(i.photos)?i.photos:[]).filter(p=>idOk(p) && o.photos && typeof o.photos[p]==='string' && o.photos[p].indexOf('data:image/')===0);
           ph.forEach(p=>{ photos[p] = o.photos[p]; nPh++; });
           nInc++;
-          return {id:i.id,area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0};
+          return {id:i.id,rating:/^(red|yellow|green)$/.test(i.rating)?i.rating:'',area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0};
         })};
       })};
     });
@@ -1580,7 +1635,7 @@ async function cloudSignOut(){
 
 
 function openSettings(){
-  state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:''}; renderSheet();
+  state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:'',autoMark:prefs.autoMark!==false}; renderSheet();
 }
 function cloudBlock(s){
   const c = prefs.cloud || {};
@@ -1595,6 +1650,98 @@ function cloudBlock(s){
     +'<label class="field"><span>Password</span><input type="password" data-s="cPass" value="'+esc(s.cPass)+'" autocomplete="off"></label>'
     +'<button class="btn block" data-action="cloud-signin">Sign in</button>';
 }
+
+/* ---------- Photo markup (drawing tool) ---------- */
+const MK_COLORS = {red:'#E53935',yellow:'#FFD600',white:'#FFFFFF',black:'#111111'};
+const MK_WIDTHS = {s:0.6,m:1.1,l:2};
+let mk = null;
+function mkDrawItem(ctx,s){
+  ctx.strokeStyle = s.c; ctx.fillStyle = s.c; ctx.lineWidth = s.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if(s.t==='pen'){
+    ctx.beginPath(); s.p.forEach((q,i)=>{ if(i) ctx.lineTo(q[0],q[1]); else ctx.moveTo(q[0],q[1]); });
+    if(s.p.length===1) ctx.lineTo(s.p[0][0]+0.1,s.p[0][1]);
+    ctx.stroke();
+  } else if(s.t==='circle'){
+    const b = s.b; ctx.beginPath(); ctx.ellipse((b[0]+b[2])/2,(b[1]+b[3])/2,Math.abs(b[2]-b[0])/2,Math.abs(b[3]-b[1])/2,0,0,Math.PI*2); ctx.stroke();
+  } else if(s.t==='rect'){
+    const b = s.b; ctx.strokeRect(Math.min(b[0],b[2]),Math.min(b[1],b[3]),Math.abs(b[2]-b[0]),Math.abs(b[3]-b[1]));
+  } else if(s.t==='arrow'){
+    const b = s.b, ang = Math.atan2(b[3]-b[1],b[2]-b[0]), hl = Math.max(14,s.w*5);
+    ctx.beginPath(); ctx.moveTo(b[0],b[1]); ctx.lineTo(b[2],b[3]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(b[2],b[3]); ctx.lineTo(b[2]-hl*Math.cos(ang-0.5),b[3]-hl*Math.sin(ang-0.5)); ctx.moveTo(b[2],b[3]); ctx.lineTo(b[2]-hl*Math.cos(ang+0.5),b[3]-hl*Math.sin(ang+0.5)); ctx.stroke();
+  }
+}
+function mkRedraw(withCur){
+  if(!mk) return; const ctx = mk.ctx; ctx.drawImage(mk.img,0,0,mk.canvas.width,mk.canvas.height);
+  mk.items.forEach(s=>mkDrawItem(ctx,s)); if(withCur!==false && mk.cur) mkDrawItem(ctx,mk.cur);
+}
+function mkLayout(){
+  if(!mk) return; const c = mk.canvas, st = c.parentElement; const sc = Math.min(st.clientWidth/c.width, st.clientHeight/c.height);
+  c.style.width = Math.floor(c.width*sc)+'px'; c.style.height = Math.floor(c.height*sc)+'px';
+}
+function mkPt(e){ const r = mk.canvas.getBoundingClientRect(); return [(e.clientX-r.left)*mk.canvas.width/r.width,(e.clientY-r.top)*mk.canvas.height/r.height]; }
+function mkDown(e){
+  if(!mk) return; e.preventDefault(); try{ mk.canvas.setPointerCapture(e.pointerId); }catch(_){}
+  const p = mkPt(e), w = Math.max(mk.canvas.width,mk.canvas.height)/180*MK_WIDTHS[mk.width], c = MK_COLORS[mk.color];
+  mk.cur = mk.tool==='pen' ? {t:'pen',c:c,w:w,p:[p]} : {t:mk.tool,c:c,w:w,b:[p[0],p[1],p[0],p[1]]};
+}
+function mkMove(e){
+  if(!mk || !mk.cur) return; e.preventDefault(); const p = mkPt(e);
+  if(mk.cur.t==='pen') mk.cur.p.push(p); else { mk.cur.b[2] = p[0]; mk.cur.b[3] = p[1]; }
+  mkRedraw();
+}
+function mkUp(e){
+  if(!mk || !mk.cur) return; const s = mk.cur; mk.cur = null;
+  if(s.t!=='pen' && Math.hypot(s.b[2]-s.b[0],s.b[3]-s.b[1]) < 8){ mkRedraw(); return; }
+  mk.items.push(s); mkRedraw();
+}
+function mkUi(){
+  document.querySelectorAll('#markup [data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===mk.tool)));
+  document.querySelectorAll('#markup [data-color]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.color===mk.color)));
+  document.querySelectorAll('#markup [data-width]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.width===mk.width)));
+}
+function markupHtml(){
+  const tools = [['pen','Pen'],['circle','Circle'],['rect','Box'],['arrow','Arrow']];
+  return '<div class="mk-top"><button class="mk-btn" data-action="mk-cancel">Cancel</button><span class="mk-title">Mark up photo</span><span style="display:flex;gap:6px"><button class="mk-btn" data-action="mk-undo">Undo</button><button class="mk-btn" data-action="mk-clear">Clear</button></span></div>'
+    +'<div class="mk-stage"><canvas id="mkCanvas"></canvas></div>'
+    +'<div class="mk-bottom"><div class="mk-row">'+tools.map(t=>'<button class="tool" data-action="mk-tool" data-tool="'+t[0]+'" aria-pressed="false">'+t[1]+'</button>').join('')+'</div>'
+    +'<div class="mk-row">'+Object.keys(MK_COLORS).map(k=>'<button class="dot" style="background:'+MK_COLORS[k]+'" data-action="mk-color" data-color="'+k+'" aria-label="'+k+'" aria-pressed="false"></button>').join('')
+    +'<span style="width:4px"></span>'+[['s','Thin'],['m','Medium'],['l','Thick']].map(w=>'<button class="wbtn" data-action="mk-width" data-width="'+w[0]+'" aria-pressed="false">'+w[1]+'</button>').join('')+'</div>'
+    +'<div class="mk-row"><button class="mk-act" data-action="mk-save" data-mode="copy">Save as copy</button><button class="mk-act ghost" data-action="mk-save" data-mode="replace">Replace photo</button></div></div>';
+}
+async function openMarkup(pid){
+  const data = photoCache[pid] || await sget('photo:'+pid);
+  if(!data){ toast("Couldn't open that photo."); return; }
+  const img = new Image();
+  const ok = await new Promise(res=>{ img.onload = ()=>res(true); img.onerror = ()=>res(false); img.src = data; });
+  if(!ok){ toast("Couldn't open that photo."); return; }
+  mk = {pid:pid,img:img,items:[],cur:null,tool:'pen',color:'red',width:'m'};
+  let el = document.getElementById('markup'); if(!el){ el = document.createElement('div'); el.id = 'markup'; document.body.appendChild(el); }
+  el.innerHTML = markupHtml(); el.style.display = 'flex'; document.body.style.overflow = 'hidden';
+  const c = document.getElementById('mkCanvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  mk.canvas = c; mk.ctx = c.getContext('2d'); mkLayout(); mkRedraw(); mkUi();
+  c.addEventListener('pointerdown',mkDown); c.addEventListener('pointermove',mkMove); c.addEventListener('pointerup',mkUp); c.addEventListener('pointercancel',mkUp);
+}
+function mkClose(){
+  const el = document.getElementById('markup'); if(el){ el.innerHTML = ''; el.style.display = 'none'; }
+  mk = null; document.body.style.overflow = state.sheet ? 'hidden' : '';
+}
+async function mkSave(mode){
+  if(!mk) return; const e = state.edit; if(!e){ mkClose(); return; }
+  if(!mk.items.length){ toast('Draw something first, or tap Cancel.'); return; }
+  const d = e.draft, idx = d.photos.indexOf(mk.pid);
+  if(mode!=='replace' && d.photos.length>=12){ toast('Up to 12 photos per incident.'); return; }
+  mkRedraw(false);
+  const data = mk.canvas.toDataURL('image/jpeg',0.82), pid = uid();
+  photoCache[pid] = data; await sset('photo:'+pid, data);
+  const old = mk.pid;
+  if(mode==='replace' && idx>=0){
+    d.photos[idx] = pid; e.added.push(pid);
+    if(e.added.includes(old)){ e.added = e.added.filter(x=>x!==old); deletePhoto(old); } else e.removed.push(old);
+  } else { d.photos.splice(idx>=0?idx+1:d.photos.length,0,pid); e.added.push(pid); }
+  mkClose(); render(); toast(mode==='replace' ? 'Photo replaced' : 'Marked-up copy added');
+}
+window.addEventListener('resize',()=>{ if(mk) mkLayout(); });
 
 /* ---------- events ---------- */
 document.addEventListener('click', ev=>{
@@ -1612,6 +1759,15 @@ document.addEventListener('click', ev=>{
     case 'ai-confirm-yes': prefs.aiOk = true; sset('prefs:main', JSON.stringify(prefs)); runAi(); break;
     case 'ai-apply': applyAi(); break;
     case 'copy-claude': copyTextSafe(buildClaudePrompt()).then(ok=>toast(ok?'Copied. Paste it into the Claude app.':"Couldn't copy.")); break;
+    case 'rate': { const d = state.edit.draft; d.rating = d.rating===t.dataset.val ? '' : t.dataset.val; render(); break; }
+    case 'mark-photo': state.sheet = null; renderSheet(); openMarkup(t.dataset.id); break;
+    case 'mk-cancel': mkClose(); break;
+    case 'mk-undo': if(mk){ mk.items.pop(); mkRedraw(); } break;
+    case 'mk-clear': if(mk){ mk.items = []; mk.cur = null; mkRedraw(); } break;
+    case 'mk-tool': if(mk){ mk.tool = t.dataset.tool; mkUi(); } break;
+    case 'mk-color': if(mk){ mk.color = t.dataset.color; mkUi(); } break;
+    case 'mk-width': if(mk){ mk.width = t.dataset.width; mkUi(); } break;
+    case 'mk-save': mkSave(t.dataset.mode); break;
     case 'suggest-open': state.sheet = {type:'suggest',q:''}; renderSheet(); break;
     case 'pick-lib': {
       const entry = LIB.find(x=>x.id===t.dataset.id), r = suggestFor(entry, proj), d = state.edit.draft;
@@ -1724,7 +1880,8 @@ document.addEventListener('change', ev=>{
   const t = ev.target;
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
   if(t.dataset.ai && state.sheet && state.sheet.type==='ai-review') state.sheet.use[t.dataset.ai] = t.checked;
-  if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files); }
+  if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files, t.id==='cameraInput'); }
+  if(t.dataset.sc && state.sheet && state.sheet.type==='settings'){ state.sheet[t.dataset.sc] = t.checked; prefs[t.dataset.sc] = t.checked; sset('prefs:main', JSON.stringify(prefs)); }
   if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
 document.addEventListener('keydown', ev=>{

@@ -1,8 +1,9 @@
-const CACHE = 'defect-app-v14';
+const CACHE = 'defect-app-v16';
+const OPTIONAL = ['./pdf-lib.min.js'];
 const FILES = ['./','./index.html','./manifest.webmanifest','./jszip.min.js','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
-    .then(c => Promise.all(FILES.map(f => c.add(new Request(f, {cache: 'reload'})))))
+    .then(c => Promise.all(FILES.map(f => c.add(new Request(f, {cache: 'reload'}))).concat(OPTIONAL.map(f => c.add(new Request(f, {cache: 'reload'})).catch(() => {})))))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
