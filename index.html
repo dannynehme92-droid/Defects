@@ -42,10 +42,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--primary);outline-offset:2px}
 h1,h2,p{margin:0}
-h1{font-size:calc(22px*var(--fs,1));font-weight:750;letter-spacing:-.01em}
-h2{font-size:calc(17px*var(--fs,1));font-weight:700;letter-spacing:-.005em}
+h1{font-size:calc(19px*var(--fs,1));font-weight:750;letter-spacing:-.01em}
+h2{font-size:calc(15px*var(--fs,1));font-weight:700;letter-spacing:-.005em}
 .app{max-width:720px;margin:0 auto;min-height:100vh;background:var(--surface);padding-bottom:24px}
-.sub{color:var(--muted);font-size:calc(15px*var(--fs,1))}
+.sub{color:var(--muted);font-size:calc(13.5px*var(--fs,1))}
 .pad{padding:16px}
 
 .topbar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding:6px 8px;display:flex;align-items:center;min-height:52px}
@@ -66,18 +66,18 @@ textarea{resize:vertical;line-height:1.4}
 .card{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:calc(14px*var(--fs,1)) 12px 8px;margin-bottom:calc(14px*var(--fs,1))}
 .chead{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:0 2px}
 .chead h2{flex:1}
-.tile{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.tile{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
 .card.b .tile{background:var(--teal-bg);color:var(--teal)}
 .card.u .tile{background:var(--amber-bg);color:#8A5A00}
 .card.i .tile{background:var(--red-bg);color:var(--red)}
 @media (prefers-color-scheme: dark){ .card.u .tile{color:var(--amber)} }
-.addbtn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:0;font-weight:650;font-size:calc(15px*var(--fs,1))}
+.addbtn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border-radius:999px;border:0;font-weight:650;font-size:calc(13.5px*var(--fs,1))}
 .card.b .addbtn{background:var(--teal);color:var(--teal-ink)}
 .card.u .addbtn{background:var(--amber);color:var(--amber-ink)}
 .card.i .addbtn{background:var(--red);color:var(--red-ink)}
-.thead{display:grid;gap:8px;padding:6px 44px 6px 10px;color:var(--muted);font-size:calc(14px*var(--fs,1))}
+.thead{display:grid;gap:8px;padding:6px 44px 6px 10px;color:var(--muted);font-size:calc(12.5px*var(--fs,1))}
 .trow{display:flex;align-items:stretch;border-radius:8px}
-.rmain{flex:1;min-width:0;display:grid;gap:8px;align-items:center;text-align:left;background:none;border:0;padding:calc(12px*var(--fs,1)) 10px;min-height:calc(52px*var(--fs,1));color:inherit;border-radius:8px}
+.rmain{flex:1;min-width:0;display:grid;gap:8px;align-items:center;text-align:left;background:none;border:0;padding:calc(12px*var(--fs,1)) 10px;min-height:calc(52px*var(--fs,1));color:inherit;border-radius:8px;font-size:calc(15px*var(--fs,1))}
 .dots{width:44px;border:0;background:none;color:inherit;display:flex;align-items:center;justify-content:center;border-radius:8px;flex:none}
 .b-cols{grid-template-columns:34px minmax(0,1fr) 56px}
 .u-cols{grid-template-columns:minmax(0,1fr) 72px}
@@ -88,8 +88,8 @@ textarea{resize:vertical;line-height:1.4}
 .trow.sel + .trow{border-top-color:transparent}
 .c-n{text-align:center;font-variant-numeric:tabular-nums}
 .rmain .main{font-weight:650;overflow-wrap:anywhere}
-.rmain .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:calc(15px*var(--fs,1));color:var(--muted)}
-.empty{color:var(--muted);padding:10px 4px 14px;font-size:calc(15px*var(--fs,1))}
+.rmain .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:calc(13.5px*var(--fs,1));color:var(--muted)}
+.empty{color:var(--muted);padding:10px 4px 14px;font-size:calc(13.5px*var(--fs,1))}
 
 /* incident form */
 .ctx{margin-bottom:18px;display:grid;gap:4px}
@@ -147,7 +147,7 @@ a.btn{text-decoration:none}
 .aipreview{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 12px;background:var(--raised);white-space:pre-wrap;font-size:calc(15px*var(--fs,1));max-height:200px;overflow:auto}
 .aichecks{margin:0 0 14px;padding-left:20px;font-size:calc(15px*var(--fs,1))}
 .repbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.repbtns .btn{min-height:46px;padding:0 10px}
+.repbtns .btn{min-height:40px;padding:0 10px;font-size:calc(14.5px*var(--fs,1))}
 .ratebtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .ratebtns button{min-height:50px;border-radius:10px;border:2.5px solid var(--line);background:var(--raised);font-weight:750;font-size:calc(16px*var(--fs,1));color:var(--ink)}
 .ratebtns button.red{border-color:var(--rt-red)}.ratebtns button.yellow{border-color:var(--rt-yel)}.ratebtns button.green{border-color:var(--rt-grn)}
@@ -875,6 +875,16 @@ function makeDocx(JSZipCtor,d){
 function imgSize(src){
   return new Promise(function(res){ var im = new Image(); im.onload = function(){ res({w:im.naturalWidth||4,h:im.naturalHeight||3}); }; im.onerror = function(){ res({w:4,h:3}); }; im.src = src; });
 }
+function reportFileName(data,ext){
+  const clean = t => String(t||'').replace(/[\\\/:*?"<>|\u0000-\u001f]+/g,' ').replace(/\s+/g,' ').trim();
+  const now = new Date(), pad = n => String(n).padStart(2,'0');
+  const stamp = isoToday()+' '+pad(now.getHours())+pad(now.getMinutes());
+  const addr = clean(data.project && data.project.address) || clean(data.building && data.building.name) || 'Defect report';
+  const multi = proj && proj.buildings && proj.buildings.length>1;
+  let base = multi ? addr+' - '+clean(data.building.name) : addr;
+  if(base.length>100) base = base.slice(0,100).trim();
+  return base+' - '+stamp+'.'+ext;
+}
 const isoToday = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 async function prepareReport(id,prepared,withPhotos){
   const b = proj.buildings.find(x=>x.id===id), units = [];
@@ -916,8 +926,8 @@ async function runReport(){
       blob = await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'}); ext = 'docx';
     }
     const url = URL.createObjectURL(blob);
-    const safe = data.building.name.replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'building';
-    state.sheet = {type:'ready',url:url,blob:blob,name:'Defect-report-'+safe+'-'+isoToday()+'.'+ext,
+    const fname = reportFileName(data,ext);
+    state.sheet = {type:'ready',url:url,blob:blob,name:fname,
       title:fmt==='pdf'?'PDF report ready':'Report ready',btnLabel:fmt==='pdf'?'Download PDF file':'Download Word file'}; renderSheet();
   }catch(err){
     console.error(err); state.sheet = null; renderSheet();
