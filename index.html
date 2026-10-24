@@ -495,7 +495,7 @@ function renderSheet(){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
       +'<div class="sheethead"><h2 id="st">Settings</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<h3 style="margin-top:0">Text size</h3><div class="pseg" role="group" aria-label="Text size" style="margin-bottom:18px">'+[['normal','Normal'],['small','Small'],['smaller','Smaller']].map(x=>'<button class="'+(textSizeKey()===x[0]?'on':'')+'" data-action="textsize" data-val="'+x[0]+'" aria-pressed="'+(textSizeKey()===x[0])+'">'+x[1]+'</button>').join('')+'</div>'
-      +'<h3 style="margin-top:0">Photos</h3><label class="check"><input type="checkbox" data-sc="autoMark"'+(s.autoMark!==false?' checked':'')+'><span>Open the drawing tool after taking a photo</span></label><div style="height:18px"></div>'
+
       +cloudBlock(s)+'<h3 style="margin-top:24px">AI assistant (optional)</h3>'
       +'<p class="sub" style="margin-bottom:12px">Adds an Improve with AI button to each incident. Paste your Anthropic API key below. It is stored only on this device, and the app talks to Anthropic directly. Set a monthly spending limit in your Anthropic account. Clearing the key removes the button.</p>'
       +'<label class="field"><span>Anthropic API key</span><input type="password" data-s="aiKey" value="'+esc(s.aiKey)+'" placeholder="sk-ant-..." autocomplete="off" autocapitalize="none"></label>'
@@ -598,7 +598,7 @@ async function addPhotos(files,fromCamera){
       e.draft.photos.push(pid); e.added.push(pid); lastPid = pid;
     }catch(err){ toast("That photo couldn't be read."); }
   }
-  if(state.edit===e){ render(); if(fromCamera && lastPid && prefs.autoMark!==false) openMarkup(lastPid); }
+  if(state.edit===e) render();
 }
 
 /* ---------- PDF report ---------- */
@@ -1649,7 +1649,7 @@ const TEXT_SIZES = {normal:1,small:.9,smaller:.82};
 function textSizeKey(){ return TEXT_SIZES[prefs.textSize] ? prefs.textSize : 'small'; }
 function applyTextSize(){ document.documentElement.style.setProperty('--fs', String(TEXT_SIZES[textSizeKey()])); }
 function openSettings(){
-  state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:'',autoMark:prefs.autoMark!==false}; renderSheet();
+  state.sheet = {type:'settings',aiUrl:prefs.aiUrl||'',aiCode:prefs.aiCode||'',aiKey:prefs.aiKey||'',cUrl:(prefs.cloud&&prefs.cloud.url)||'',cKey:(prefs.cloud&&prefs.cloud.key)||'',cEmail:(prefs.cloud&&prefs.cloud.email)||'',cPass:''}; renderSheet();
 }
 function cloudBlock(s){
   const c = prefs.cloud || {};
@@ -1896,7 +1896,6 @@ document.addEventListener('change', ev=>{
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
   if(t.dataset.ai && state.sheet && state.sheet.type==='ai-review') state.sheet.use[t.dataset.ai] = t.checked;
   if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files, t.id==='cameraInput'); }
-  if(t.dataset.sc && state.sheet && state.sheet.type==='settings'){ state.sheet[t.dataset.sc] = t.checked; prefs[t.dataset.sc] = t.checked; sset('prefs:main', JSON.stringify(prefs)); }
   if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
 document.addEventListener('keydown', ev=>{
