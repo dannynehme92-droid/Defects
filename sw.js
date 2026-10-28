@@ -1,4 +1,4 @@
-const CACHE = 'defect-app-v20';
+const CACHE = 'defect-app-v21';
 const OPTIONAL = ['./pdf-lib.min.js'];
 const FILES = ['./','./index.html','./manifest.webmanifest','./jszip.min.js','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', e => {
