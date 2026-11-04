@@ -156,6 +156,8 @@ a.btn{text-decoration:none}
 .ratebtns button.green[aria-pressed=true]{background:var(--rt-grn);color:var(--rt-grn-ink)}
 .rpill{display:inline-block;padding:1px 10px;border-radius:999px;font-size:calc(13px*var(--fs,1));font-weight:750;margin-left:8px;vertical-align:middle}
 .rpill.red{background:var(--rt-red);color:var(--rt-red-ink)}.rpill.yellow{background:var(--rt-yel);color:var(--rt-yel-ink)}.rpill.green{background:var(--rt-grn);color:var(--rt-grn-ink)}
+.dictbtn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 14px;border-radius:999px;border:1px solid var(--line,#c9d3d8);background:transparent;color:var(--text,inherit);font-size:calc(14px*var(--fs,1))}
+.dictbtn.on{background:var(--rt-red);border-color:var(--rt-red);color:#fff}
 .photo .mk{position:absolute;left:-8px;bottom:-8px;width:34px;height:34px;border-radius:50%;border:0;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;padding:0}
 #markup{position:fixed;inset:0;z-index:25;background:#101418;color:#fff;display:flex;flex-direction:column;touch-action:none}
 #markup .mk-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top))}
@@ -189,6 +191,7 @@ const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const RATING = {red:{label:'Red',desc:'High priority'},yellow:{label:'Yellow',desc:'Medium priority'},green:{label:'Green',desc:'Low priority'}};
 const ICON = {
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   pencil:'<path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>',
   back:'<path d="M15 5l-7 7 7 7"/>',
   close:'<path d="M6 6l12 12M18 6L6 18"/>',
@@ -416,7 +419,8 @@ function renderMain(){
 function renderIncident(){
   const e = state.edit, d = e.draft, b = curB(), u = curU();
   const f = (key,label,type) => '<label class="field"><span>'+label+'</span>'
-    +(type==='line'?'<input type="text" data-f="'+key+'" value="'+esc(d[key])+'">':'<textarea data-f="'+key+'" rows="4">'+esc(d[key])+'</textarea>')+'</label>';
+    +(type==='line'?'<input type="text" data-f="'+key+'" value="'+esc(d[key])+'">':'<textarea data-f="'+key+'" rows="4">'+esc(d[key])+'</textarea>')
+    +(dictOk()?'<button type="button" class="dictbtn'+(dict.key===key?' on':'')+'" data-action="dictate" data-key="'+key+'">'+icon('mic',18)+'<span>'+(dict.key===key?'Stop dictating':'Dictate')+'</span></button>':'')+'</label>';
   const photos = d.photos.map(p=>'<div class="photo"><button class="open" data-action="view-photo" data-id="'+p+'" aria-label="View photo"><img data-photo="'+p+'" alt="Incident photo"></button><button class="mk" data-action="mark-photo" data-id="'+p+'" aria-label="Mark up photo">'+icon('pencil',18)+'</button>'
     +'<button class="rm" data-action="rm-photo" data-id="'+p+'" aria-label="Remove photo">'+icon('close',14)+'</button></div>').join('');
   return '<header class="topbar"><button class="back" data-action="back-main">'+icon('back')+'<span>'+esc(u.name)+'</span></button></header>'
@@ -505,7 +509,7 @@ function renderSheet(){
       +'<div class="sheetactions"><button class="btn ghost" data-action="clear-ai">Clear</button><button class="btn ghost" data-action="test-ai">Test connection</button><button class="btn" data-action="save-settings">Save</button></div></div>';
   } else if(s.type==='ai-confirm'){
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">Send this incident to the AI assistant?</h2>'
-      +'<p class="sub" style="margin:8px 0 18px">Your notes, the project address and up to four photos from this incident are sent to Anthropic to write the suggestions. Do not use this if the report is confidential and you are not allowed to share it.</p>'
+      +'<p class="sub" style="margin:8px 0 18px">Your notes, the project address and up to six photos from this incident are sent to Anthropic to write the suggestions. Do not use this if the report is confidential and you are not allowed to share it.</p>'
       +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="ai-confirm-yes">Send</button></div></div>';
   } else if(s.type==='ai-review'){
     const r = s.r;
@@ -1443,7 +1447,10 @@ const AI_SYSTEM = [
   '- Do NOT cite NCC or Australian Standard clause numbers. The app adds verified references from its own library.',
   '- Choose breachIds only from the library list, and only where the defect clearly matches an entry. Otherwise return an empty array.',
   '- In checks, list things the inspector should verify on site or in the documents before relying on the write-up, such as measurements to take, the NCC edition that applies, or anything unclear in the photos.',
-  '- If photos are provided, describe only what is clearly visible.'
+  '- If photos are provided, study each one closely before writing. Identify what is visible: the element or building component, its material and finish, the type of defect (for example cracking, water staining, efflorescence, mould, delamination, lifting, gaps, poor workmanship), its approximate extent and position, and any signs of the cause such as water paths, missing flashing or sealant, or movement.',
+  '- Where the inspector has drawn circles, arrows or marks on a photo, treat them as pointing to the defect they want recorded.',
+  '- Combine what the photos show with the inspector\'s notes. If the notes and photos disagree, follow the photos for what is visible and add the disagreement to checks.',
+  '- Describe only what is clearly visible. Do not guess sizes or distances; where scale matters, add it to checks.'
 ].join('\n');
 const aiEnabled = () => !!(prefs.aiUrl || prefs.aiKey);
 async function callAi(imgs, signal){
@@ -1482,7 +1489,7 @@ async function runAi(){
   state.sheet = {type:'working',title:'Asking the AI assistant',body:'This can take up to a minute.'}; renderSheet();
   try{
     const imgs = [];
-    for(const pid of e.draft.photos.slice(0,4)){ const dta = photoCache[pid] || await sget('photo:'+pid); if(dta) imgs.push(dta); }
+    for(const pid of e.draft.photos.slice(0,6)){ const dta = photoCache[pid] || await sget('photo:'+pid); if(dta) imgs.push(dta); }
     const ctrl = new AbortController(), to = setTimeout(()=>ctrl.abort(),90000);
     let raw;
     try{ raw = await callAi(imgs, ctrl.signal); } finally { clearTimeout(to); }
@@ -1861,6 +1868,42 @@ async function mkSave(mode){
 }
 window.addEventListener('resize',()=>{ if(mk) mkLayout(); });
 
+/* ---------- Voice dictation ---------- */
+const dict = {rec:null,key:null};
+const dictOk = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+function dictUi(){
+  document.querySelectorAll('[data-action="dictate"]').forEach(b=>{
+    const on = dict.key===b.dataset.key; b.classList.toggle('on',on);
+    const sp = b.querySelector('span'); if(sp) sp.textContent = on ? 'Stop dictating' : 'Dictate';
+  });
+}
+function dictStop(){ if(dict.rec){ try{ dict.rec.stop(); }catch(e){} } }
+function dictate(key){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast('Dictation is not available here. Use the microphone on your keyboard.'); return; }
+  if(dict.rec){ const same = dict.key===key; dictStop(); if(same) return; }
+  if(!state.edit) return;
+  const base = String(state.edit.draft[key]||'').replace(/\s+$/,'');
+  const rec = new SR(); rec.lang = 'en-AU'; rec.interimResults = true; rec.continuous = true;
+  rec.onresult = ev=>{
+    const el = document.querySelector('[data-f="'+key+'"]');
+    if(!el || !state.edit){ try{ rec.stop(); }catch(e){} return; }
+    const said = Array.from(ev.results).map(r=>r[0].transcript).join(' ').replace(/\s+/g,' ').trim();
+    const txt = (base ? base+' ' : '')+said;
+    state.edit.draft[key] = txt; el.value = txt;
+  };
+  rec.onerror = ev=>{
+    const m = ev.error==='not-allowed' || ev.error==='service-not-allowed' ? 'Microphone access was blocked. Allow the microphone for this site in Chrome.'
+      : ev.error==='no-speech' ? 'Did not hear anything. Try again.'
+      : ev.error==='network' ? 'Dictation needs an internet connection.' : 'Dictation stopped.';
+    toast(m);
+  };
+  rec.onend = ()=>{ if(dict.rec===rec){ dict.rec = null; dict.key = null; dictUi(); } };
+  dict.rec = rec; dict.key = key;
+  try{ rec.start(); }catch(e){ dict.rec = null; dict.key = null; }
+  dictUi();
+}
+
 /* ---------- events ---------- */
 document.addEventListener('click', ev=>{
   const t = ev.target.closest('[data-action]'); if(!t) return;
@@ -1874,6 +1917,7 @@ document.addEventListener('click', ev=>{
     case 'test-ai': testAi(); break;
     case 'clear-ai': prefs.aiUrl = ''; prefs.aiCode = ''; prefs.aiKey = ''; sset('prefs:main', JSON.stringify(prefs)); state.sheet = null; render(); toast('AI assistant turned off. Copy for Claude still works.'); break;
     case 'ai-improve': aiImprove(); break;
+    case 'dictate': dictate(t.dataset.key); break;
     case 'ai-confirm-yes': prefs.aiOk = true; sset('prefs:main', JSON.stringify(prefs)); runAi(); break;
     case 'ai-apply': applyAi(); break;
     case 'copy-claude': copyTextSafe(buildClaudePrompt()).then(ok=>toast(ok?'Copied. Paste it into the Claude app.':"Couldn't copy.")); break;
