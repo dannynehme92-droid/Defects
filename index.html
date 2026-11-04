@@ -156,6 +156,14 @@ a.btn{text-decoration:none}
 .ratebtns button.green[aria-pressed=true]{background:var(--rt-grn);color:var(--rt-grn-ink)}
 .rpill{display:inline-block;padding:1px 10px;border-radius:999px;font-size:calc(13px*var(--fs,1));font-weight:750;margin-left:8px;vertical-align:middle}
 .rpill.red{background:var(--rt-red);color:var(--rt-red-ink)}.rpill.yellow{background:var(--rt-yel);color:var(--rt-yel-ink)}.rpill.green{background:var(--rt-grn);color:var(--rt-grn-ink)}
+.ricard{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+.ricard .rihead{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.ricard .d2{margin:0 0 10px;color:var(--muted);font-size:calc(14px*var(--fs,1));display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ricard .lbl{display:block;font-weight:700;margin:10px 0 6px;font-size:calc(14px*var(--fs,1))}
+.ricard .thumbs .photo img{width:64px;height:64px;object-fit:cover;border-radius:8px;display:block}
+.ricard .row2{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ricard .row2 .btn{flex:1;min-width:120px}
+.ricard .prev{margin:0 0 8px;font-size:calc(13px*var(--fs,1));color:var(--muted)}
 .dictbtn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 14px;border-radius:999px;border:1px solid var(--line,#c9d3d8);background:transparent;color:var(--text,inherit);font-size:calc(14px*var(--fs,1))}
 .dictbtn.on{background:var(--rt-red);border-color:var(--rt-red);color:#fff}
 .photo .mk{position:absolute;left:-8px;bottom:-8px;width:34px;height:34px;border-radius:50%;border:0;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;padding:0}
@@ -293,7 +301,7 @@ function deletePhoto(pid){ delete photoCache[pid]; sdel('photo:'+pid); }
 const root = document.getElementById('app');
 function render(reset){
   const y = window.scrollY;
-  root.innerHTML = state.view==='incident' ? renderIncident() : (state.view==='projects' ? renderProjects() : renderMain());
+  root.innerHTML = state.view==='incident' ? renderIncident() : (state.view==='reinsp' ? renderReinsp() : (state.view==='projects' ? renderProjects() : renderMain()));
   window.scrollTo(0, reset ? 0 : y);
   renderSheet(); hydratePhotos();
 }
@@ -386,6 +394,7 @@ function renderMain(){
         +'<button class="dots" data-action="menu" data-kind="building" data-id="'+x.id+'" aria-label="Options for '+esc(x.name)+'">'+icon('dots')+'</button></div>').join('');
   }
   h += card('b','Buildings','building','Building','add-b',inner);
+  if(b) h += reinspCard(b);
 
   // units
   if(b){
@@ -477,12 +486,21 @@ function renderSheet(){
     const nInc = b.units.reduce((n,u)=>n+u.incidents.length,0), nPh = b.units.reduce((n,u)=>n+photosOfUnit(u).length,0);
     let nPlace = 0; b.units.forEach(u=>u.incidents.forEach(i=>{ if(((i.breach||'')+(i.scope||'')).indexOf('[CONFIRM')>=0) nPlace++; }));
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
-      +'<div class="sheethead"><h2 id="st">'+(s.fmt==='pdf'?'PDF report':'Word report')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
-      +'<p class="sub" style="margin-bottom:16px">'+esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.</p>'
-      +(nPlace?'<p class="sub" style="margin-bottom:14px;color:var(--hazard)">'+nPlace+' incident'+(nPlace===1?'':'s')+' still ha'+(nPlace===1?'s':'ve')+' [CONFIRM] placeholders in the breach or scope. Resolve them before you issue this report.</p>':'')
+      +'<div class="sheethead"><h2 id="st">'+(s.ri?'Re-inspection ':'')+(s.fmt==='pdf'?'PDF report':'Word report')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<p class="sub" style="margin-bottom:16px">'+(s.ri ? esc(b.name)+': Re-inspection '+riNum(b,s.ri)+'.' : esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.')+'</p>'
+      +(nPlace && !s.ri?'<p class="sub" style="margin-bottom:14px;color:var(--hazard)">'+nPlace+' incident'+(nPlace===1?'':'s')+' still ha'+(nPlace===1?'s':'ve')+' [CONFIRM] placeholders in the breach or scope. Resolve them before you issue this report.</p>':'')
       +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
       +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
       +'<div class="sheetactions"><button class="btn'+(s.fmt==='pdf'?' ghost':'')+'" data-action="report-make" data-fmt="docx">Create Word file</button><button class="btn'+(s.fmt==='pdf'?'':' ghost')+'" data-action="report-make" data-fmt="pdf">Create PDF file</button></div><button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Cancel</button></div>';
+  } else if(s.type==='ri-new'){
+    const bb = curB();
+    h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
+      +'<div class="sheethead"><h2 id="st">New defect found</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<label class="field"><span>Unit / location</span><input type="text" data-n="unit" list="riUnits" value="'+esc(s.unit)+'" autocomplete="off"><datalist id="riUnits">'+(bb?bb.units.map(u=>'<option value="'+esc(u.name)+'">').join(''):'')+'</datalist></label>'
+      +'<label class="field"><span>Area</span><input type="text" data-n="area" value="'+esc(s.area)+'" autocomplete="off"></label>'
+      +'<label class="field"><span>Description</span><textarea data-n="desc" rows="3">'+esc(s.desc)+'</textarea></label>'
+      +'<div class="field"><span>Rating</span><div class="ratebtns">'+['red','yellow','green'].map(k=>'<button class="'+k+'" data-action="ri-new-rate" data-val="'+k+'" aria-pressed="'+(s.rating===k)+'">'+RATING[k].label+'</button>').join('')+'</div></div>'
+      +'<div class="sheetactions"><button class="btn ghost" data-action="close-sheet">Cancel</button><button class="btn" data-action="ri-new-save">Add defect</button></div></div>';
   } else if(s.type==='suggest'){
     const q = (s.q||'').trim().toLowerCase();
     const items = LIB.filter(x=>!q || (x.name+' '+x.std.map(a=>a.n+' '+a.t).join(' ')).toLowerCase().indexOf(q)>=0);
@@ -614,11 +632,17 @@ function reportIntro(d){
   var cls = p.clsText==='Class 1' ? 'a Class 1 building (such as a detached house or townhouse)'
           : p.clsText==='Class 2' ? 'a Class 2 building (a building containing two or more sole-occupancy units, such as apartments)'
           : p.clsText==='Other' ? 'a building of a class other than Class 1 or Class 2' : 'a building whose class has not been recorded';
-  var s1 = 'This report records the defects observed during an inspection of '+d.building.name+(p.address ? ' at '+p.address : '')+(p.dateText ? ' on '+p.dateText : '')+'.';
-  if(d.prepared) s1 += ' The inspection was carried out by '+d.prepared+' of DMJ Projects Pty Ltd.';
+  var s1;
+  if(d.re){
+    s1 = 'This report records the results of re-inspection No. '+d.re.n+' of '+d.building.name+(p.address ? ' at '+p.address : '')+' carried out on '+d.re.dateText+'.'+(p.dateText ? ' The original inspection was carried out on '+p.dateText+'.' : '');
+  } else {
+    s1 = 'This report records the defects observed during an inspection of '+d.building.name+(p.address ? ' at '+p.address : '')+(p.dateText ? ' on '+p.dateText : '')+'.';
+  }
+  if(d.prepared) s1 += ' The '+(d.re?'re-inspection':'inspection')+' was carried out by '+d.prepared+' of DMJ Projects Pty Ltd.';
   out.push(s1);
   out.push('The building is classified as '+cls+' under the National Construction Code (NCC)'+(p.nccText ? ' and has been assessed against '+p.nccText+'.' : '. The NCC edition has not been recorded.'));
-  out.push('The inspection was a visual inspection of the areas accessible on the day. Each incident records the observed condition, possible causes, any relevant NCC or Australian Standard reference, and a recommended scope of rectification. Incidents are rated Red (high priority), Yellow (medium priority) or Green (low priority).');
+  if(d.re) out.push('The purpose of this re-inspection is to check whether the defects recorded at the original inspection have been rectified. Each defect is shown with its original rating, its current status (Rectified, Partially rectified or Not rectified), a comment and, where taken, original and re-inspection photos. Defects first found at this re-inspection are marked as new.');
+  else out.push('The inspection was a visual inspection of the areas accessible on the day. Each incident records the observed condition, possible causes, any relevant NCC or Australian Standard reference, and a recommended scope of rectification. Incidents are rated Red (high priority), Yellow (medium priority) or Green (low priority).');
   return out;
 }
 function reportSchedule(d){
@@ -627,11 +651,21 @@ function reportSchedule(d){
     n++;
     var desc = String(i.description||'').replace(/\s+/g,' ').trim();
     if(desc.length>170) desc = desc.slice(0,167).replace(/\s+\S*$/,'')+'...';
-    rows.push({n:n, loc:u.name+(i.area ? ' - '+i.area : ''), desc:desc||'Not recorded', rating:i.rating});
+    rows.push({n:n, loc:u.name+(i.area ? ' - '+i.area : ''), desc:desc||'Not recorded', rating:i.rating, status:i.statusText||''});
   }); });
   return rows;
 }
 function reportConclusion(d){
+  if(d.re){
+    var q = d.re.counts, pr = d.project || {}, o2 = [];
+    var a1 = 'At re-inspection No. '+d.re.n+' on '+d.re.dateText+', '+q.rectified+' of '+q.total+' defect'+(q.total===1?'':'s')+' from the original inspection '+(q.rectified===1?'was':'were')+' found to be rectified, '+q.partial+' partially rectified and '+q.not+' not rectified'+(q.none ? ', and '+q.none+' not assessed' : '')+'.';
+    if(q.added) a1 += ' '+q.added+' new defect'+(q.added===1?' was':'s were')+' recorded.';
+    o2.push(a1);
+    o2.push((q.rectified===q.total && !q.added && !q.none) ? 'All defects from the original inspection have been rectified.' : 'Defects that are not rectified, only partially rectified, not assessed or newly recorded remain outstanding and should be attended to. A further re-inspection may be required once the works are complete.');
+    o2.push('This report is based on a visual inspection of the areas accessible on '+d.re.dateText+'. Concealed or inaccessible areas were not assessed, and conditions may change after the re-inspection date. The observations are made on the information available at the time.');
+    o2.push('Please contact DMJ Projects if any item in this report requires clarification. Thank you for the opportunity to carry out this re-inspection.');
+    return o2;
+  }
   var p = d.project || {}, c = {red:0,yellow:0,green:0,none:0}, total = 0;
   d.units.forEach(function(u){ u.incidents.forEach(function(i){ total++; c[({red:1,yellow:1,green:1})[i.rating] ? i.rating : 'none']++; }); });
   var out = [];
@@ -650,7 +684,7 @@ const LETTERHEAD_RATIO = 226/1080;
 async function makePdf(PDFLib, d){
   const PDFDocument = PDFLib.PDFDocument, StandardFonts = PDFLib.StandardFonts, rgb = PDFLib.rgb;
   const doc = await PDFDocument.create();
-  doc.setTitle('Defect inspection report - '+d.building.name); doc.setCreator('Defect inspection app');
+  doc.setTitle((d.re?'Re-inspection report - ':'Defect inspection report - ')+d.building.name); doc.setCreator('Defect inspection app');
   const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold), FI = await doc.embedFont(StandardFonts.HelveticaOblique);
   const ok = new Set(F.getCharacterSet());
   const clean = s => Array.from(String(s==null?'':s).replace(/\r/g,'')).map(ch=>{ if(ch==='\n') return ch; if(ch==='\t') return ' '; return ok.has(ch.codePointAt(0)) ? ch : '?'; }).join('');
@@ -713,21 +747,23 @@ async function makePdf(PDFLib, d){
     page.drawImage(limg,{x:MX-4,y:y-lh,width:lw,height:lh}); y -= lh; gap(6);
     page.drawLine({start:{x:MX,y:y},end:{x:W-MX,y:y},thickness:0.8,color:LINE}); gap(14);
   }catch(e){}
-  lines('Defect inspection report',{font:FB,size:24,lead:30});
+  lines(d.re?'Re-inspection report No. '+d.re.n:'Defect inspection report',{font:FB,size:24,lead:30});
   lines(d.building.name,{font:FB,size:15,color:TEAL,lead:22}); gap(8);
   h2('Introduction');
   reportIntro(d).forEach(t=>{ lines(t,{size:10.5,lead:15}); gap(5); });
   h2('Report details');
   const totalInc = d.units.reduce((n,u)=>n+u.incidents.length,0);
   if(d.project && d.project.address) kv('Property',d.project.address);
-  if(d.project && d.project.dateText) kv('Inspection date',d.project.dateText);
+  if(d.project && d.project.dateText) kv(d.re?'Original inspection':'Inspection date',d.project.dateText);
+  if(d.re) kv('Re-inspection date',d.re.dateText);
   if(d.project && d.project.clsText) kv('Building class',d.project.clsText);
   if(d.project && d.project.nccText) kv('Code edition assessed against',d.project.nccText);
   kv('Building',d.building.name); kv('Reference',String(d.building.ref)); kv('Report date',d.date);
   if(d.prepared) kv('Prepared by',d.prepared);
-  kv('Units / locations',String(d.units.length)); kv('Incidents recorded',String(totalInc));
+  kv('Units / locations',String(d.units.length)); kv(d.re?'Defects reviewed':'Incidents recorded',String(totalInc));
   const rc = {red:0,yellow:0,green:0,none:0}; d.units.forEach(u=>u.incidents.forEach(i=>{ rc[RC[i.rating]?i.rating:'none']++; }));
   kv('Rating summary','Red '+rc.red+', Yellow '+rc.yellow+', Green '+rc.green+(rc.none?', Not rated '+rc.none:''));
+  if(d.re) kv('Status summary',d.re.summary);
   // summary table
   h2('Summary by unit / location');
   if(!d.units.length) lines('No units or locations recorded.',{});
@@ -754,11 +790,14 @@ async function makePdf(PDFLib, d){
     for(const inc of u.incidents){
       n++;
       need(90); gap(6); lines('Incident '+n+(inc.area?': '+inc.area:''),{font:FB,size:11.5,color:RUST,lead:16}); gap(2);
-      kv('Area',inc.area,true); ratingKv(inc.rating); kv('Description',inc.description,true); kv('Causes',inc.causes,true); kv('Breach',inc.breach,true); kv('Scope of rectification',inc.scope,true);
-      if(inc.images && inc.images.length){
-        need(30); lines('Photos ('+inc.images.length+')',{font:FB,size:10,lead:14}); gap(2);
+      if(d.re){ kv('Area',inc.area,true); ratingKv(inc.rating); kv('Status',inc.statusText,true); kv('Re-inspection comment',inc.comment,true); kv('Original description',inc.description,true); }
+      else { kv('Area',inc.area,true); ratingKv(inc.rating); kv('Description',inc.description,true); kv('Causes',inc.causes,true); kv('Breach',inc.breach,true); kv('Scope of rectification',inc.scope,true); }
+      for(const grp of (d.re ? [['Original photos',inc.images],['Re-inspection photos',inc.images2]] : [['Photos',inc.images]])){
+        const imgs = grp[1];
+        if(imgs && imgs.length){
+        need(30); lines(grp[0]+' ('+imgs.length+')',{font:FB,size:10,lead:14}); gap(2);
         const embedded = [];
-        for(const im of inc.images){
+        for(const im of imgs){
           try{
             const m = /^data:(.*?);base64,(.*)$/.exec(im.data); const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) bytes[k] = bin.charCodeAt(k);
             embedded.push(/png/i.test(m[1]) ? await doc.embedPng(bytes) : await doc.embedJpg(bytes));
@@ -771,6 +810,7 @@ async function makePdf(PDFLib, d){
           pair.forEach((p,j)=>{ page.drawImage(p.img,{x:MX+j*(cw+12),y:y-p.h,width:p.w,height:p.h}); });
           y -= rh+8;
         }
+        }
       }
       gap(8);
     }
@@ -780,19 +820,20 @@ async function makePdf(PDFLib, d){
   const sch = reportSchedule(d);
   if(!sch.length) lines('No incidents recorded.',{});
   else {
-    const cN = MX+8, cL = MX+40, cD = MX+170, cR = W-MX-80, wL = 122, wD = cR-cD-8;
+    const RE = !!d.re, cN = MX+8, cL = MX+40, cD = MX+160, cR = W-MX-(RE?150:80), wL = 112, wD = cR-cD-8;
     const head = ()=>{ need(24); page.drawRectangle({x:MX,y:y-20,width:CW,height:20,color:TEAL});
-      [['No.',cN],['Location',cL],['Defect',cD],['Rating',cR]].forEach(a=>page.drawText(a[0],{x:a[1],y:y-14,size:10,font:FB,color:WHITE})); y -= 20; };
+      [['No.',cN],['Location',cL],['Defect',cD],['Rating',cR]].concat(RE?[['Status',cR+64]]:[]).forEach(a=>page.drawText(a[0],{x:a[1],y:y-14,size:10,font:FB,color:WHITE})); y -= 20; };
     head();
     sch.forEach(r=>{
-      const l1 = wrap(r.loc,F,9.5,wL), l2 = wrap(r.desc,F,9.5,wD); const h = Math.max(l1.length,l2.length,1)*12.5+8;
+      const l1 = wrap(r.loc,F,9.5,wL), l2 = wrap(r.desc,F,9.5,wD), l3 = RE ? wrap(r.status==='New defect found at this re-inspection'?'New defect':(r.status||'Not assessed'),F,9,84) : []; const h = Math.max(l1.length,l2.length,l3.length,1)*12.5+8;
       if(y-h < BOT){ newPage(); head(); }
       page.drawText(String(r.n),{x:cN,y:y-14,size:9.5,font:F,color:INK});
       l1.forEach((l,i)=>{ if(l) page.drawText(l,{x:cL,y:y-14-i*12.5,size:9.5,font:F,color:INK}); });
       l2.forEach((l,i)=>{ if(l) page.drawText(l,{x:cD,y:y-14-i*12.5,size:9.5,font:F,color:INK}); });
       const m = RC[r.rating];
-      if(m){ page.drawRectangle({x:cR,y:y-18,width:70,height:16,color:m.c}); page.drawText(m.t.split(' ')[0],{x:cR+6,y:y-13.5,size:9.5,font:FB,color:m.ink}); }
+      if(m){ page.drawRectangle({x:cR,y:y-18,width:RE?56:70,height:16,color:m.c}); page.drawText(m.t.split(' ')[0],{x:cR+6,y:y-13.5,size:9.5,font:FB,color:m.ink}); }
       else page.drawText('Not rated',{x:cR,y:y-14,size:9.5,font:FI,color:MUTED});
+      l3.forEach((l,i)=>{ if(l) page.drawText(l,{x:cR+64,y:y-14-i*12.5,size:9,font:F,color:INK}); });
       y -= h; page.drawLine({start:{x:MX,y:y},end:{x:W-MX,y:y},thickness:0.5,color:LINE});
     });
   }
@@ -877,19 +918,20 @@ function makeDocx(JSZipCtor,d){
   zip.file('word/media/letterhead.jpg', LETTERHEAD_B64, {base64:true});
   rels.push('<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/letterhead.jpg"/>');
   body += wPara(wImage('rId99',5400000,1130000,9000),'<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="6" w:color="C9D3D8"/></w:pBdr><w:spacing w:after="240"/>');
-  body += P('Title','Defect inspection report');
+  body += P('Title',d.re ? 'Re-inspection report No. '+d.re.n : 'Defect inspection report');
   body += wPara(wRuns(d.building.name,'<w:b/><w:color w:val="2F7A80"/><w:sz w:val="30"/><w:szCs w:val="30"/>'),'<w:spacing w:after="240"/>');
   body += P('Heading1','Introduction');
   reportIntro(d).forEach(function(t){ body += wPara(wRuns(t)); });
   body += P('Heading1','Report details');
   var kv = '';
   if(d.project && d.project.address) kv += kvRow('Property',d.project.address);
-  if(d.project && d.project.dateText) kv += kvRow('Inspection date',d.project.dateText);
+  if(d.project && d.project.dateText) kv += kvRow(d.re?'Original inspection':'Inspection date',d.project.dateText);
+  if(d.re) kv += kvRow('Re-inspection date',d.re.dateText);
   if(d.project && d.project.clsText) kv += kvRow('Building class',d.project.clsText);
   if(d.project && d.project.nccText) kv += kvRow('Code edition assessed against',d.project.nccText);
   kv += kvRow('Building',d.building.name)+kvRow('Reference',String(d.building.ref))+kvRow('Report date',d.date);
   if(d.prepared) kv += kvRow('Prepared by',d.prepared);
-  kv += kvRow('Units / locations',String(d.units.length))+kvRow('Incidents recorded',String(totalInc))+kvRow('Rating summary',ratingCounts(d.units));
+  kv += kvRow('Units / locations',String(d.units.length))+kvRow(d.re?'Defects reviewed':'Incidents recorded',String(totalInc))+kvRow('Rating summary',ratingCounts(d.units))+(d.re?kvRow('Status summary',d.re.summary):'');
   body += wTable([2300,7338],kv);
 
   body += P('Heading1','Summary by unit / location');
@@ -911,11 +953,13 @@ function makeDocx(JSZipCtor,d){
     u.incidents.forEach(function(inc){
       n++;
       body += wPara(wRuns('Incident '+n+(inc.area?': '+inc.area:'')),'<w:pStyle w:val="Heading3"/>');
-      body += wTable([2300,7338],kvRow('Area',inc.area)+ratingRow(inc.rating)+kvRow('Description',inc.description)+kvRow('Causes',inc.causes)+kvRow('Breach',inc.breach)+kvRow('Scope of rectification',inc.scope));
-      if(inc.images && inc.images.length){
-        body += wPara(wRuns('Photos ('+inc.images.length+')','<w:b/>'),'<w:keepNext/><w:spacing w:before="160" w:after="60"/>');
+      body += wTable([2300,7338],d.re ? kvRow('Area',inc.area)+ratingRow(inc.rating)+kvRow('Status',inc.statusText)+kvRow('Re-inspection comment',inc.comment)+kvRow('Original description',inc.description) : kvRow('Area',inc.area)+ratingRow(inc.rating)+kvRow('Description',inc.description)+kvRow('Causes',inc.causes)+kvRow('Breach',inc.breach)+kvRow('Scope of rectification',inc.scope));
+      (d.re ? [['Original photos',inc.images],['Re-inspection photos',inc.images2]] : [['Photos',inc.images]]).forEach(function(grp){
+        var imgs = grp[1];
+        if(!(imgs && imgs.length)) return;
+        body += wPara(wRuns(grp[0]+' ('+imgs.length+')','<w:b/>'),'<w:keepNext/><w:spacing w:before="160" w:after="60"/>');
         var inner = '', MAX = 2834640;
-        inc.images.forEach(function(im){
+        imgs.forEach(function(im){
           imgN++; docPr++;
           var cx, cy;
           if(im.w>=im.h){ cx = MAX; cy = Math.round(MAX*im.h/im.w); } else { cy = MAX; cx = Math.round(MAX*im.w/im.h); }
@@ -925,7 +969,7 @@ function makeDocx(JSZipCtor,d){
           inner += wImage(rid,cx,cy,docPr)+'<w:r><w:t xml:space="preserve">  </w:t></w:r>';
         });
         body += wPara(inner,'<w:spacing w:after="120"/>');
-      }
+      });
       body += wPara('','<w:spacing w:after="120"/>');
     });
   });
@@ -934,14 +978,15 @@ function makeDocx(JSZipCtor,d){
   var sch = reportSchedule(d);
   if(!sch.length) body += wPara(wRuns('No incidents recorded.'));
   else {
+    var RE = !!d.re, W5 = RE ? [600,1900,3338,1300,2500] : [600,2400,4838,1800];
     var wh = function(t,al){ return wPara(wRuns(t,'<w:b/><w:color w:val="FFFFFF"/>'),CELLP+(al||'')); };
-    var sh = wRow(wCell(600,wh('No.'),'2F7A80')+wCell(2400,wh('Location'),'2F7A80')+wCell(4838,wh('Defect'),'2F7A80')+wCell(1800,wh('Rating'),'2F7A80'),true);
+    var sh = wRow(wCell(W5[0],wh('No.'),'2F7A80')+wCell(W5[1],wh('Location'),'2F7A80')+wCell(W5[2],wh('Defect'),'2F7A80')+wCell(W5[3],wh('Rating'),'2F7A80')+(RE?wCell(W5[4],wh('Status'),'2F7A80'):''),true);
     var sr = sch.map(function(r){
       var m = RATING_DOC[r.rating];
-      var rc = m ? wCell(1800,wPara(wRuns(m.text.split(' ')[0],'<w:b/><w:color w:val="'+m.ink+'"/>'),CELLP),m.fill) : wCell(1800,wPara(wRuns('Not rated','<w:i/><w:color w:val="7A8A93"/>'),CELLP));
-      return wRow(wCell(600,wPara(wRuns(String(r.n)),CELLP))+wCell(2400,wPara(wRuns(r.loc),CELLP))+wCell(4838,wPara(wRuns(r.desc),CELLP))+rc);
+      var rc = m ? wCell(W5[3],wPara(wRuns(m.text.split(' ')[0],'<w:b/><w:color w:val="'+m.ink+'"/>'),CELLP),m.fill) : wCell(W5[3],wPara(wRuns('Not rated','<w:i/><w:color w:val="7A8A93"/>'),CELLP));
+      return wRow(wCell(W5[0],wPara(wRuns(String(r.n)),CELLP))+wCell(W5[1],wPara(wRuns(r.loc),CELLP))+wCell(W5[2],wPara(wRuns(r.desc),CELLP))+rc+(RE?wCell(W5[4],wPara(wRuns(r.status==='New defect found at this re-inspection'?'New defect':(r.status||'Not assessed')),CELLP)):''));
     }).join('');
-    body += wTable([600,2400,4838,1800],sh+sr);
+    body += wTable(W5,sh+sr);
   }
   body += P('Heading1','Conclusion');
   reportConclusion(d).forEach(function(t){ body += wPara(wRuns(t)); });
@@ -991,7 +1036,7 @@ function reportFileName(data,ext){
   const multi = proj && proj.buildings && proj.buildings.length>1;
   let base = multi ? addr+' - '+clean(data.building.name) : addr;
   if(base.length>100) base = base.slice(0,100).trim();
-  return base+' - '+stamp+'.'+ext;
+  return base+(data.re ? ' - Re-inspection '+data.re.n : '')+' - '+stamp+'.'+ext;
 }
 const isoToday = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 async function prepareReport(id,prepared,withPhotos){
@@ -1024,7 +1069,7 @@ async function runReport(){
   prefs.prepared = prepared; sset('prefs:main', JSON.stringify(prefs));
   state.sheet = {type:'working',title:fmt==='pdf'?'Building your PDF':'Building your report'}; renderSheet();
   try{
-    const data = await prepareReport(id,prepared,withPhotos);
+    const data = s.ri ? await prepareReinsp(id,s.ri,prepared,withPhotos) : await prepareReport(id,prepared,withPhotos);
     let blob, ext;
     if(fmt==='pdf'){
       const PL = await loadPdfLib();
@@ -1302,7 +1347,7 @@ function suggestFor(e, pj){
 /* ---------- Backup and restore ---------- */
 function allPhotoIds(){
   const ids = [];
-  jobs.projects.forEach(pj=>pj.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>i.photos.forEach(p=>ids.push(p))))));
+  jobs.projects.forEach(pj=>pj.buildings.forEach(b=>{ b.units.forEach(u=>u.incidents.forEach(i=>i.photos.forEach(p=>ids.push(p)))); photosOfReinsp(b).forEach(p=>ids.push(p)); }));
   return ids;
 }
 async function makeBackup(){
@@ -1337,7 +1382,7 @@ function parseBackup(o){
     if(!pj || !idOk(pj.id) || !Array.isArray(pj.buildings)) throw new Error('bad project');
     const buildings = pj.buildings.map(b=>{
       if(!b || !idOk(b.id) || !Array.isArray(b.units)) throw new Error('bad building');
-      return {id:b.id,ref:Number(b.ref)||1,name:str(b.name),units:b.units.map(u=>{
+      const bUnits = b.units.map(u=>{
         if(!u || !idOk(u.id) || !Array.isArray(u.incidents)) throw new Error('bad unit');
         return {id:u.id,name:str(u.name),incidents:u.incidents.map(i=>{
           if(!i || !idOk(i.id)) throw new Error('bad incident');
@@ -1346,7 +1391,18 @@ function parseBackup(o){
           nInc++;
           return {id:i.id,rating:/^(red|yellow|green)$/.test(i.rating)?i.rating:'',area:str(i.area),description:str(i.description),causes:str(i.causes),breach:str(i.breach),scope:str(i.scope),photos:ph,created:Number(i.created)||Date.now(),modified:Number(i.modified)||0};
         })};
-      })};
+      });
+      const bOut = {id:b.id,ref:Number(b.ref)||1,name:str(b.name),units:bUnits};
+      if(Array.isArray(b.reinsp)){
+        const rs = b.reinsp.filter(r=>r && idOk(r.id) && Array.isArray(r.items)).map(r=>({id:r.id,n:Number(r.n)||1,date:/^\d{4}-\d{2}-\d{2}$/.test(r.date||'')?r.date:'',created:Number(r.created)||Date.now(),modified:Number(r.modified)||Date.now(),
+          items:r.items.filter(it=>it && idOk(it.id)).map(it=>{
+            const keep = a => (Array.isArray(a)?a:[]).filter(p=>idOk(p) && o.photos && typeof o.photos[p]==='string' && o.photos[p].indexOf('data:image/')===0);
+            const ph = keep(it.photos); ph.forEach(p=>{ photos[p] = o.photos[p]; nPh++; });
+            return {id:it.id,ref:idOk(it.ref)?it.ref:'',added:!!it.added,unit:str(it.unit),area:str(it.area),desc:str(it.desc),rating:/^(red|yellow|green)$/.test(it.rating)?it.rating:'',orig:(Array.isArray(it.orig)?it.orig:[]).filter(p=>idOk(p)),status:/^(rectified|partial|not)$/.test(it.status)?it.status:'',prev:/^(rectified|partial|not)$/.test(it.prev)?it.prev:'',comment:str(it.comment),photos:ph};
+          })}));
+        if(rs.length) bOut.reinsp = rs;
+      }
+      return bOut;
     });
     nB += buildings.length;
     return {id:pj.id,address:str(pj.address),date:/^\d{4}-\d{2}-\d{2}$/.test(pj.date||'')?pj.date:'',initials:str(pj.initials).slice(0,10),cls:/^(1|2|other)$/.test(pj.cls)?pj.cls:'',ncc:/^(2022|2019|2016|older)$/.test(pj.ncc)?pj.ncc:'',done:!!pj.done,created:Number(pj.created)||Date.now(),buildings:buildings};
@@ -1571,7 +1627,10 @@ function mergeUnit(b,l,r){
 }
 function mergeBuilding(b,l,r){
   const bb = b || {ref:undefined,name:undefined,units:[]};
-  return {id:l.id,ref:pick3(bb.ref,l.ref,r.ref),name:pick3(bb.name,l.name,r.name),units:mergeList(bb.units,l.units||[],r.units||[],mergeUnit)};
+  const out = {id:l.id,ref:pick3(bb.ref,l.ref,r.ref),name:pick3(bb.name,l.name,r.name),units:mergeList(bb.units,l.units||[],r.units||[],mergeUnit)};
+  const ri = mergeList(bb.reinsp||[],l.reinsp||[],r.reinsp||[],mergeIncident);
+  if(ri.length) out.reinsp = ri;
+  return out;
 }
 function mergeProject(b,l,r){
   const bb = b || {buildings:[]};
@@ -1626,7 +1685,7 @@ function dataUrlToBlob(d){
   return new Blob([arr],{type:m[1]||'image/jpeg'});
 }
 function blobToDataUrl(b){ return new Promise((res,rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = rej; r.readAsDataURL(b); }); }
-function photoIdsOf(p){ const ids = []; p.buildings.forEach(b=>b.units.forEach(u=>u.incidents.forEach(i=>(i.photos||[]).forEach(x=>ids.push(x))))); return ids; }
+function photoIdsOf(p){ const ids = []; p.buildings.forEach(b=>{ b.units.forEach(u=>u.incidents.forEach(i=>(i.photos||[]).forEach(x=>ids.push(x)))); (b.reinsp||[]).forEach(r=>(r.items||[]).forEach(it=>(it.photos||[]).forEach(x=>ids.push(x)))); }); return ids; }
 function cloudDoc(p){ return JSON.parse(canon(p)); }
 const deep = x => JSON.parse(JSON.stringify(x));
 async function uploadPhoto(pid){
@@ -1723,7 +1782,7 @@ async function syncNow(manual){
     await saveCloudState(); await saveNow();
     if(state.sel.p){ const cur = jobs.projects.find(p=>p.id===state.sel.p); if(cur){ proj = cur; fixSel(); } else if(state.view!=='projects'){ proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.edit = null; state.view = 'projects'; } }
     cloudMsg = conflicts ? 'Synced, but '+conflicts+' project'+(conflicts===1?'':'s')+' changed elsewhere. Syncing again shortly.' : (photoFails ? 'Synced. '+photoFails+' photo'+(photoFails===1?'':'s')+' still to transfer.' : '');
-    if(state.view!=='incident' && !state.sheet) render();
+    if(state.view!=='incident' && state.view!=='reinsp' && !state.sheet) render();
     else setCloudMsg(cloudMsg);
     if(conflicts || photoFails){ clearTimeout(resyncTimer); resyncTimer = setTimeout(()=>syncNow(false), 15000); }
     if(manual && !conflicts && !photoFails) toast('Synced.');
@@ -1882,15 +1941,19 @@ function dictate(key){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ toast('Dictation is not available here. Use the microphone on your keyboard.'); return; }
   if(dict.rec){ const same = dict.key===key; dictStop(); if(same) return; }
-  if(!state.edit) return;
-  const base = String(state.edit.draft[key]||'').replace(/\s+$/,'');
+  const isRc = key.indexOf('rc:')===0, itemId = isRc ? key.slice(3) : '';
+  const rnd = isRc ? curRound() : null, item = rnd ? rnd.items.find(x=>x.id===itemId) : null;
+  if(isRc ? !item : !state.edit) return;
+  const sel = isRc ? '[data-rc="'+itemId+'"]' : '[data-f="'+key+'"]';
+  const base = String(isRc ? item.comment : state.edit.draft[key]||'').replace(/\s+$/,'');
   const rec = new SR(); rec.lang = 'en-AU'; rec.interimResults = true; rec.continuous = true;
   rec.onresult = ev=>{
-    const el = document.querySelector('[data-f="'+key+'"]');
-    if(!el || !state.edit){ try{ rec.stop(); }catch(e){} return; }
+    const el = document.querySelector(sel);
+    if(!el){ try{ rec.stop(); }catch(e){} return; }
     const said = Array.from(ev.results).map(r=>r[0].transcript).join(' ').replace(/\s+/g,' ').trim();
     const txt = (base ? base+' ' : '')+said;
-    state.edit.draft[key] = txt; el.value = txt;
+    if(isRc){ item.comment = txt; rnd.modified = Date.now(); persist(); } else if(state.edit) state.edit.draft[key] = txt;
+    el.value = txt;
   };
   rec.onerror = ev=>{
     const m = ev.error==='not-allowed' || ev.error==='service-not-allowed' ? 'Microphone access was blocked. Allow the microphone for this site in Chrome.'
@@ -1902,6 +1965,100 @@ function dictate(key){
   dict.rec = rec; dict.key = key;
   try{ rec.start(); }catch(e){ dict.rec = null; dict.key = null; }
   dictUi();
+}
+
+/* ---------- Re-inspections ---------- */
+const RI = {rectified:{t:'Rectified',k:'green'},partial:{t:'Partially rectified',k:'yellow'},not:{t:'Not rectified',k:'red'}};
+const curRound = () => { const b = curB(); return b && b.reinsp ? (b.reinsp.find(r=>r.id===state.ri)||null) : null; };
+function photosOfReinsp(b){ const a = []; (b.reinsp||[]).forEach(r=>(r.items||[]).forEach(it=>(it.photos||[]).forEach(p=>a.push(p)))); return a; }
+function riNum(b,id){ const r = (b.reinsp||[]).find(x=>x.id===id); return r ? r.n : ''; }
+function riCounts(r){
+  const c = {rectified:0,partial:0,not:0,none:0,added:0,total:0};
+  r.items.forEach(it=>{ if(it.added){ c.added++; return; } c.total++; if(RI[it.status]) c[it.status]++; else c.none++; });
+  return c;
+}
+function riSummaryText(r){
+  const c = riCounts(r), p = [];
+  p.push('Rectified '+c.rectified); p.push('Partially rectified '+c.partial); p.push('Not rectified '+c.not);
+  if(c.none) p.push('Not assessed '+c.none);
+  if(c.added) p.push('New defects '+c.added);
+  return p.join(', ');
+}
+function reinspCard(b){
+  const rs = b.reinsp || [];
+  let inner;
+  if(!rs.length) inner = '<p class="empty">No re-inspections yet. Start one to go back through the defects and record what has been fixed.</p>';
+  else inner = rs.map(r=>{ const c = riCounts(r); return '<button class="btn ghost block" style="margin:0 0 8px;text-align:left;justify-content:flex-start;display:block" data-action="open-reinsp" data-id="'+r.id+'"><b>Re-inspection '+r.n+'</b><br><span style="font-weight:500;color:var(--muted)">'+esc(fmtD(r.date))+' · '+c.rectified+' of '+c.total+' rectified'+(c.added?', '+c.added+' new':'')+'</span></button>'; }).join('');
+  return card('u','Re-inspections','incident','Re-inspection','start-reinsp',inner);
+}
+function startReinsp(){
+  const b = curB(); if(!b) return;
+  const rs = b.reinsp || [], items = [];
+  const prevRound = rs.length ? rs.reduce((m,r)=>r.n>m.n?r:m,rs[0]) : null;
+  const prevOf = id => { if(!prevRound) return ''; const it = prevRound.items.find(x=>x.id===id || x.ref===id); return it && RI[it.status] ? it.status : ''; };
+  b.units.forEach(u=>u.incidents.forEach(i=>items.push({id:uid(),ref:i.id,added:false,unit:u.name,area:i.area||'',desc:i.description||'',rating:i.rating||'',orig:i.photos.slice(0,6),status:'',prev:prevOf(i.id),comment:'',photos:[]})));
+  rs.forEach(r=>r.items.forEach(it=>{ if(it.added) items.push({id:uid(),ref:it.id,added:false,unit:it.unit,area:it.area,desc:it.desc,rating:it.rating,orig:(it.photos||[]).slice(0,6),status:'',prev:prevOf(it.id),comment:'',photos:[]}); }));
+  if(!items.length){ toast('Add some incidents first. A re-inspection carries the defects forward.'); return; }
+  const n = rs.reduce((m,r)=>Math.max(m,r.n),0)+1;
+  const r = {id:uid(),n:n,date:isoToday(),created:Date.now(),modified:Date.now(),items:items};
+  (b.reinsp = b.reinsp||[]).push(r); persist(); state.ri = r.id; state.view = 'reinsp'; render(true);
+}
+function riItemHtml(it){
+  const thumbs = (ids,rm) => ids.map(p=>'<div class="photo"><button class="open" data-action="view-photo" data-id="'+p+'" aria-label="View photo"><img data-photo="'+p+'" alt="Photo"></button>'+(rm?'<button class="rm" data-action="ri-rm-photo" data-id="'+p+'" data-item="'+it.id+'" aria-label="Remove photo">'+icon('close',14)+'</button>':'')+'</div>').join('');
+  let h = '<div class="ricard"><div class="rihead"><b>'+esc(it.area||'No area')+'</b>'+(it.rating&&RATING[it.rating]?'<span class="rpill '+it.rating+'">'+RATING[it.rating].label+'</span>':'')+(it.added?'<span class="rpill" style="background:var(--primary);color:var(--primary-ink)">New</span>':'')+'</div>';
+  if(it.desc) h += '<p class="d2">'+esc(it.desc)+'</p>';
+  if(it.prev && RI[it.prev]) h += '<p class="prev">Last re-inspection: '+RI[it.prev].t+'</p>';
+  if(it.orig && it.orig.length) h += '<span class="lbl">Original photos</span><div class="thumbs">'+thumbs(it.orig,false)+'</div>';
+  if(!it.added) h += '<span class="lbl">Status now</span><div class="ratebtns" role="group" aria-label="Status">'+['rectified','partial','not'].map(k=>'<button class="'+RI[k].k+'" data-action="ri-status" data-item="'+it.id+'" data-val="'+k+'" aria-pressed="'+(it.status===k)+'">'+RI[k].t+'</button>').join('')+'</div>';
+  h += '<label class="field" style="margin:12px 0 0"><span>Comment</span><textarea data-rc="'+it.id+'" rows="3">'+esc(it.comment)+'</textarea></label>';
+  if(dictOk()) h += '<button type="button" class="dictbtn'+(dict.key==='rc:'+it.id?' on':'')+'" data-action="dictate" data-key="rc:'+it.id+'">'+icon('mic',18)+'<span>'+(dict.key==='rc:'+it.id?'Stop dictating':'Dictate')+'</span></button>';
+  h += '<span class="lbl">Re-inspection photos'+(it.photos.length?' ('+it.photos.length+')':'')+'</span>'+(it.photos.length?'<div class="thumbs">'+thumbs(it.photos,true)+'</div>':'')
+    +'<div class="row2"><button class="btn ghost" data-action="ri-cam" data-item="'+it.id+'">Take photo</button><button class="btn ghost" data-action="ri-gal" data-item="'+it.id+'">From gallery</button></div>';
+  if(it.added) h += '<div class="row2"><button class="btn danger" data-action="ri-del-item" data-item="'+it.id+'">Remove this defect</button></div>';
+  return h+'</div>';
+}
+function renderReinsp(){
+  const b = curB(), r = curRound();
+  if(!b || !r) return '<header class="topbar"><button class="back" data-action="ri-back">'+icon('back')+'<span>Back</span></button></header><main class="pad"><p class="empty">This re-inspection is no longer available.</p></main>';
+  const groups = []; r.items.forEach(it=>{ let g = groups.find(x=>x.name===it.unit); if(!g){ g = {name:it.unit,items:[]}; groups.push(g); } g.items.push(it); });
+  return '<header class="topbar"><button class="back" data-action="ri-back">'+icon('back')+'<span>'+esc(b.name)+'</span></button></header><main class="pad">'
+    +'<h1 style="margin-bottom:6px">Re-inspection '+r.n+'</h1><p class="sub" style="margin-bottom:12px">'+esc(proj.address||'')+' · '+esc(b.name)+'</p>'
+    +'<label class="field"><span>Re-inspection date</span><input type="date" data-rdate value="'+esc(r.date)+'"></label>'
+    +'<p class="sub" id="risum" style="margin-bottom:12px">'+esc(riSummaryText(r))+'</p>'
+    +'<div class="repbtns" style="margin-bottom:16px"><button class="btn ghost" data-action="ri-report" data-fmt="docx">Word report</button><button class="btn ghost" data-action="ri-report" data-fmt="pdf">PDF report</button></div>'
+    +groups.map(g=>'<h3 style="margin:18px 0 10px">'+esc(g.name||'Unit')+'</h3>'+g.items.map(riItemHtml).join('')).join('')
+    +'<button class="btn block" style="margin:6px 0 12px" data-action="ri-add-new">Add a new defect found</button>'
+    +'<button class="btn danger block" style="margin:0 0 24px" data-action="ri-del-round">Delete this re-inspection</button>'
+    +'<input type="file" id="riGal" class="vh" accept="image/*" multiple tabindex="-1"><input type="file" id="riCam" class="vh" accept="image/*" capture="environment" tabindex="-1"></main>';
+}
+async function addRiPhotos(files){
+  const r = curRound(); const it = r && r.items.find(x=>x.id===state.riTarget); if(!it) return;
+  for(const f of files){
+    if(it.photos.length>=8){ toast('Up to 8 re-inspection photos per defect.'); break; }
+    try{ const data = await compress(f), pid = uid(); photoCache[pid] = data; await sset('photo:'+pid, data); it.photos.push(pid); }
+    catch(err){ toast("That photo couldn't be read."); }
+  }
+  r.modified = Date.now(); persist(); if(state.view==='reinsp') render();
+}
+function riSaveNew(){
+  const s = state.sheet, r = curRound(); if(!r) return;
+  if(!(s.area||'').trim() && !(s.desc||'').trim()){ toast('Add an area or a description.'); return; }
+  r.items.push({id:uid(),ref:'',added:true,unit:(s.unit||'').trim()||'Other',area:(s.area||'').trim(),desc:(s.desc||'').trim(),rating:s.rating||'',orig:[],status:'',prev:'',comment:'',photos:[]});
+  r.modified = Date.now(); state.sheet = null; persist(); render(); toast('Defect added');
+}
+async function prepareReinsp(bid,rid,prepared,withPhotos){
+  const b = proj.buildings.find(x=>x.id===bid), r = b.reinsp.find(x=>x.id===rid);
+  const load = async ids => { const out = []; if(!withPhotos) return out; for(const pid of (ids||[])){ const data = photoCache[pid] || await sget('photo:'+pid); if(!data) continue; const dim = await imgSize(data); out.push({data:data,w:dim.w,h:dim.h}); } return out; };
+  const units = [];
+  for(const it of r.items){
+    let u = units.find(x=>x.name===(it.unit||'Other')); if(!u){ u = {name:it.unit||'Other',incidents:[]}; units.push(u); }
+    u.incidents.push({rating:it.rating||'',area:it.area,description:it.desc,causes:'',breach:'',scope:'',comment:it.comment||'',statusText:it.added?'New defect found at this re-inspection':(RI[it.status]?RI[it.status].t:'Not assessed'),images:await load(it.orig),images2:await load(it.photos)});
+  }
+  const c = riCounts(r);
+  const base = await prepareReport(bid,prepared,false);
+  base.units = units;
+  base.re = {n:r.n,dateText:fmtD(r.date),counts:c,summary:riSummaryText(r)};
+  return base;
 }
 
 /* ---------- events ---------- */
@@ -1984,13 +2141,13 @@ document.addEventListener('click', ev=>{
         }
         if(s.kind==='project'){
           const pj = jobs.projects.find(x=>x.id===s.id);
-          pj.buildings.forEach(b=>b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto)));
+          pj.buildings.forEach(b=>{ b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto)); photosOfReinsp(b).forEach(deletePhoto); });
           jobs.projects = jobs.projects.filter(x=>x.id!==s.id);
           persist(); render(); toast('Deleted'); return;
         }
         if(s.kind==='building'){
           const b = proj.buildings.find(x=>x.id===s.id);
-          b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto));
+          b.units.forEach(u=>photosOfUnit(u).forEach(deletePhoto)); photosOfReinsp(b).forEach(deletePhoto);
           proj.buildings = proj.buildings.filter(x=>x.id!==s.id);
           if(state.sel.b===s.id){ state.sel.b = null; state.sel.u = null; }
         } else {
@@ -2014,6 +2171,19 @@ document.addEventListener('click', ev=>{
         u.incidents = u.incidents.filter(i=>i.id!==e.id);
         state.edit = null; state.view = 'main'; persist(); render(true); toast('Incident deleted');
       }); break; }
+    case 'start-reinsp': startReinsp(); break;
+    case 'open-reinsp': state.ri = t.dataset.id; state.view = 'reinsp'; render(true); break;
+    case 'ri-back': dictStop(); state.view = 'main'; render(true); break;
+    case 'ri-status': { const r = curRound(), it = r && r.items.find(x=>x.id===t.dataset.item); if(it){ it.status = it.status===t.dataset.val ? '' : t.dataset.val; r.modified = Date.now(); persist(); render(); } break; }
+    case 'ri-cam': { state.riTarget = t.dataset.item; const i = document.getElementById('riCam'); if(i) i.click(); break; }
+    case 'ri-gal': { state.riTarget = t.dataset.item; const i = document.getElementById('riGal'); if(i) i.click(); break; }
+    case 'ri-rm-photo': { const r = curRound(), it = r && r.items.find(x=>x.id===t.dataset.item); if(it){ it.photos = it.photos.filter(p=>p!==t.dataset.id); deletePhoto(t.dataset.id); r.modified = Date.now(); persist(); render(); } break; }
+    case 'ri-add-new': state.sheet = {type:'ri-new',unit:'',area:'',desc:'',rating:''}; renderSheet(); break;
+    case 'ri-new-rate': if(state.sheet){ state.sheet.rating = state.sheet.rating===t.dataset.val ? '' : t.dataset.val; renderSheet(); } break;
+    case 'ri-new-save': riSaveNew(); break;
+    case 'ri-del-item': { const r = curRound(), id = t.dataset.item; ask('Remove this defect?','Its comment and photos will be removed.','Remove',()=>{ const it = r.items.find(x=>x.id===id); if(it){ it.photos.forEach(deletePhoto); r.items = r.items.filter(x=>x.id!==id); r.modified = Date.now(); persist(); render(); } }); break; }
+    case 'ri-del-round': { const b = curB(), r = curRound(); ask('Delete this re-inspection?','All statuses, comments and re-inspection photos in it will be removed. The original inspection is not affected.','Delete',()=>{ r.items.forEach(it=>it.photos.forEach(deletePhoto)); b.reinsp = b.reinsp.filter(x=>x.id!==r.id); if(!b.reinsp.length) delete b.reinsp; persist(); state.view = 'main'; render(true); toast('Deleted'); }); break; }
+    case 'ri-report': { const b = curB(), r = curRound(); if(b && r){ state.sheet = {type:'report',id:b.id,ri:r.id,prepared:prefs.prepared||'',photos:true,fmt:t.dataset.fmt||'docx'}; renderSheet(); } break; }
     case 'pick-gallery': { const i = document.getElementById('galleryInput'); if(i) i.click(); break; }
     case 'pick-camera': { const i = document.getElementById('cameraInput'); if(i) i.click(); break; }
     case 'view-photo': state.sheet = {type:'photo',id:t.dataset.id}; renderSheet(); break;
@@ -2025,6 +2195,11 @@ document.addEventListener('click', ev=>{
   }
 });
 document.addEventListener('input', ev=>{
+  const t0 = ev.target;
+  if(t0.dataset && t0.dataset.rc){ const r = curRound(), it = r && r.items.find(x=>x.id===t0.dataset.rc); if(it){ it.comment = t0.value; r.modified = Date.now(); persist(); } return; }
+  if(t0.dataset && t0.dataset.rdate!==undefined){ const r = curRound(); if(r && /^\d{4}-\d{2}-\d{2}$/.test(t0.value)){ r.date = t0.value; r.modified = Date.now(); persist(); } return; }
+  if(t0.dataset && t0.dataset.n && state.sheet){ state.sheet[t0.dataset.n] = t0.value; return; }
+
   const t = ev.target;
   if(t.dataset.f && state.edit) state.edit.draft[t.dataset.f] = t.value;
   else if(t.dataset.p && state.sheet && state.sheet.type==='project') state.sheet[t.dataset.p] = t.value;
@@ -2044,6 +2219,7 @@ document.addEventListener('change', ev=>{
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
   if(t.dataset.ai && state.sheet && state.sheet.type==='ai-review') state.sheet.use[t.dataset.ai] = t.checked;
   if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files, t.id==='cameraInput'); }
+  if(t.id==='riGal' || t.id==='riCam'){ const files = Array.from(t.files); t.value = ''; addRiPhotos(files); }
   if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
 document.addEventListener('keydown', ev=>{
