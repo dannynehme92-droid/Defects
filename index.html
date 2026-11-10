@@ -436,12 +436,11 @@ function renderIncident(){
   return '<header class="topbar"><button class="back" data-action="back-main">'+icon('back')+'<span>'+esc(u.name)+'</span></button></header>'
     +'<main class="pad"><h1 style="margin-bottom:14px">'+(e.id?'Edit incident':'New incident')+'</h1>'
     +'<div class="ctx"><span><b>Building :</b> '+esc(b.name)+'</span><span><b>Unit / Location :</b> '+esc(u.name)+'</span></div>'
-    +f('area','Area','line')+f('description','Description')+f('causes','Causes')
+    +f('area','Area','line')+f('description','Description')+f('causes','Causes')+f('breach','Breach')+f('scope','Scope of rectification')
     +'<div class="field"><span id="ratl">Rating</span><div class="ratebtns" role="group" aria-labelledby="ratl">'+['red','yellow','green'].map(k=>'<button class="'+k+'" data-action="rate" data-val="'+k+'" aria-pressed="'+(d.rating===k)+'">'+RATING[k].label+'</button>').join('')+'</div><p class="hint" style="margin-top:8px;font-size:calc(14px*var(--fs,1));color:var(--muted)">'+(d.rating?esc(RATING[d.rating].label+': '+RATING[d.rating].desc+'. Tap again to clear.'):'Red is high priority, yellow is medium, green is low.')+'</p></div>'
     +'<button class="btn ghost block" style="margin:0 0 6px" data-action="suggest-open">Suggest breach and scope wording</button><p class="hint" style="margin:0 0 16px;font-size:calc(14px*var(--fs,1));color:var(--muted)">Adds starting wording from a list of common defects. Confirm every clause before you rely on it.</p>'
     +(aiEnabled()?'<button class="btn block" style="margin:0 0 10px" data-action="ai-improve">Improve with AI</button>':'')
     +(aiEnabled()?'':'<button class="btn ghost block" style="margin:0 0 6px" data-action="copy-claude">Copy for Claude</button><p class="hint" style="margin:0 0 16px;font-size:calc(14px*var(--fs,1));color:var(--muted)">Copies your notes and the project details so you can paste them into the Claude app and ask for a professional write-up.</p>')
-    +f('breach','Breach')+f('scope','Scope of rectification')
     +'<div class="field"><span>Photos'+(d.photos.length?' ('+d.photos.length+')':'')+'</span>'
     +(d.photos.length?'<div class="thumbs">'+photos+'</div>':'<p class="sub">Use the gallery or camera button to add photos.</p>')+'</div>'
     +(e.id?'<button class="btn danger" data-action="delete-incident">Delete incident</button>':'')
