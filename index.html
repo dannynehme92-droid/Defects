@@ -301,7 +301,7 @@ function deletePhoto(pid){ delete photoCache[pid]; sdel('photo:'+pid); }
 const root = document.getElementById('app');
 function render(reset){
   const y = window.scrollY;
-  root.innerHTML = state.view==='incident' ? renderIncident() : (state.view==='reinsp' ? renderReinsp() : (state.view==='projects' ? renderProjects() : renderMain()));
+  root.innerHTML = state.view==='incident' ? renderIncident() : (state.view==='reinsp' ? renderReinsp() : (state.view==='design' ? renderDesign() : (state.view==='projects' ? renderProjects() : renderMain())));
   window.scrollTo(0, reset ? 0 : y);
   renderSheet(); hydratePhotos();
 }
@@ -382,7 +382,7 @@ function renderMain(){
   let h = '<header class="topbar"><button class="back" data-action="close-project">'+icon('back')+'<span>Projects</span></button>'
     +'<button class="iconbtn" style="margin-left:auto" data-action="backup-open" aria-label="Backup and restore">'+icon('backup')+'</button></header><main class="pad">'
     +'<div class="projhead"><h1>'+esc(proj.address||'Project')+'</h1><p class="sub">'+esc([fmtD(proj.date),proj.initials].filter(Boolean).join(', '))+'</p>'
-    +(b?'<div class="repbtns"><button class="btn ghost" data-action="report-open" data-fmt="docx" data-id="'+b.id+'">Word report</button><button class="btn ghost" data-action="report-open" data-fmt="pdf" data-id="'+b.id+'">PDF report</button></div>':'')+'</div>';
+    +(b?'<div class="repbtns"><button class="btn ghost" data-action="report-open" data-fmt="docx" data-id="'+b.id+'">Word report</button><button class="btn ghost" data-action="report-open" data-fmt="pdf" data-id="'+b.id+'">PDF report</button><button class="btn ghost" data-action="report-open" data-fmt="xlsx" data-id="'+b.id+'">Excel</button></div>':'')+'</div>';
 
   // buildings
   let inner;
@@ -395,6 +395,7 @@ function renderMain(){
   }
   h += card('b','Buildings','building','Building','add-b',inner);
   if(b) h += reinspCard(b);
+  if(b) h += designCard(b);
 
   // units
   if(b){
@@ -486,12 +487,12 @@ function renderSheet(){
     const nInc = b.units.reduce((n,u)=>n+u.incidents.length,0), nPh = b.units.reduce((n,u)=>n+photosOfUnit(u).length,0);
     let nPlace = 0; b.units.forEach(u=>u.incidents.forEach(i=>{ if(((i.breach||'')+(i.scope||'')).indexOf('[CONFIRM')>=0) nPlace++; }));
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
-      +'<div class="sheethead"><h2 id="st">'+(s.ri?'Re-inspection ':'')+(s.fmt==='pdf'?'PDF report':'Word report')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
+      +'<div class="sheethead"><h2 id="st">'+(s.ri?'Re-inspection ':'')+(s.fmt==='pdf'?'PDF report':s.fmt==='xlsx'?'Excel schedule':'Word report')+'</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">'+icon('close')+'</button></div>'
       +'<p class="sub" style="margin-bottom:16px">'+(s.ri ? esc(b.name)+': Re-inspection '+riNum(b,s.ri)+'.' : esc(b.name)+': '+b.units.length+' unit'+(b.units.length===1?'':'s')+' or locations, '+nInc+' incident'+(nInc===1?'':'s')+', '+nPh+' photo'+(nPh===1?'':'s')+'.')+'</p>'
       +(nPlace && !s.ri?'<p class="sub" style="margin-bottom:14px;color:var(--hazard)">'+nPlace+' incident'+(nPlace===1?'':'s')+' still ha'+(nPlace===1?'s':'ve')+' [CONFIRM] placeholders in the breach or scope. Resolve them before you issue this report.</p>':'')
       +'<label class="field"><span>Prepared by (optional)</span><input type="text" data-r="prepared" value="'+esc(s.prepared)+'" autocomplete="name"></label>'
       +'<label class="check"><input type="checkbox" data-r="photos"'+(s.photos?' checked':'')+'><span>Include photos</span></label>'
-      +'<div class="sheetactions"><button class="btn'+(s.fmt==='pdf'?' ghost':'')+'" data-action="report-make" data-fmt="docx">Create Word file</button><button class="btn'+(s.fmt==='pdf'?'':' ghost')+'" data-action="report-make" data-fmt="pdf">Create PDF file</button></div><button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Cancel</button></div>';
+      +'<div class="sheetactions"><button class="btn'+(s.fmt==='docx'||!s.fmt?'':' ghost')+'" data-action="report-make" data-fmt="docx">Create Word file</button><button class="btn'+(s.fmt==='pdf'?'':' ghost')+'" data-action="report-make" data-fmt="pdf">Create PDF file</button><button class="btn'+(s.fmt==='xlsx'?'':' ghost')+'" data-action="report-make" data-fmt="xlsx">Create Excel file</button></div><button class="btn ghost block" style="margin-top:10px" data-action="close-sheet">Cancel</button></div>';
   } else if(s.type==='ri-new'){
     const bb = curB();
     h = '<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st">'
@@ -815,6 +816,18 @@ async function makePdf(PDFLib, d){
       gap(8);
     }
   }
+  // design review findings
+  if(d.design && d.design.findings.length){
+    h2('Design review findings');
+    lines('This is a preliminary, AI-assisted review of the documents listed below. The findings are possible issues to verify against the documents and the NCC. They are not confirmed non-compliances.',{size:10.5,lead:15}); gap(4);
+    lines('Documents reviewed: '+d.design.docs.map(x=>x.name+' ('+x.kind+')').join('; '),{size:10,lead:14}); gap(4);
+    if(d.design.summary){ lines(d.design.summary,{size:10.5,lead:15}); gap(4); }
+    d.design.findings.forEach((f,i)=>{
+      need(90); gap(6); lines('Finding '+(i+1)+': '+f.title,{font:FB,size:11.5,color:RUST,lead:16}); gap(2);
+      kv('Discipline',f.discipline,true); ratingKv(f.rating); kv('Description',f.description,true); kv('Evidence',drEvidenceText(f),true); kv('Check against',f.nccTopic,true); kv('Recommendation',f.recommendation,true); kv('Confidence',f.confidence,true);
+      gap(8);
+    });
+  }
   // schedule of defects
   h2('Schedule of defects');
   const sch = reportSchedule(d);
@@ -974,6 +987,17 @@ function makeDocx(JSZipCtor,d){
     });
   });
 
+  if(d.design && d.design.findings.length){
+    body += P('Heading1','Design review findings');
+    body += wPara(wRuns('This is a preliminary, AI-assisted review of the documents listed below. The findings are possible issues to verify against the documents and the NCC. They are not confirmed non-compliances.'));
+    body += wPara(wRuns('Documents reviewed: '+d.design.docs.map(function(x){ return x.name+' ('+x.kind+')'; }).join('; ')));
+    if(d.design.summary) body += wPara(wRuns(d.design.summary));
+    d.design.findings.forEach(function(f,i){
+      body += wPara(wRuns('Finding '+(i+1)+': '+f.title),'<w:pStyle w:val="Heading3"/>');
+      body += wTable([2300,7338],kvRow('Discipline',f.discipline)+ratingRow(f.rating)+kvRow('Description',f.description)+kvRow('Evidence',drEvidenceText(f))+kvRow('Check against',f.nccTopic)+kvRow('Recommendation',f.recommendation)+kvRow('Confidence',f.confidence));
+      body += wPara('','<w:spacing w:after="120"/>');
+    });
+  }
   body += P('Heading1','Schedule of defects');
   var sch = reportSchedule(d);
   if(!sch.length) body += wPara(wRuns('No incidents recorded.'));
@@ -1057,20 +1081,25 @@ async function prepareReport(id,prepared,withPhotos){
     }
     units.push({name:u.name,incidents:incs});
   }
-  return {building:{ref:b.ref,name:b.name},project:{address:proj.address||'',dateText:fmtD(proj.date),clsText:({'1':'Class 1','2':'Class 2','other':'Other'})[proj.cls]||'',nccText:({'2022':'NCC 2022','2019':'NCC 2019','2016':'NCC 2016','older':'BCA 2015 or earlier'})[proj.ncc]||''},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
+  const design = (b.design && (b.design.findings||[]).some(f=>f.include!==false)) ? {summary:b.design.summary||'',docs:b.design.docs||[],findings:b.design.findings.filter(f=>f.include!==false)} : null;
+  return {design:design,building:{ref:b.ref,name:b.name},project:{address:proj.address||'',dateText:fmtD(proj.date),clsText:({'1':'Class 1','2':'Class 2','other':'Other'})[proj.cls]||'',nccText:({'2022':'NCC 2022','2019':'NCC 2019','2016':'NCC 2016','older':'BCA 2015 or earlier'})[proj.ncc]||''},prepared:prepared,date:new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}),units:units};
 }
 let generating = false;
 async function runReport(){
   const s = state.sheet; if(generating || !s) return;
-  const fmt = s.fmt==='pdf' ? 'pdf' : 'docx';
-  if(fmt==='docx' && typeof JSZip==='undefined'){ toast("Word export couldn't load. Check your connection and reopen the app."); return; }
+  const fmt = s.fmt==='pdf' ? 'pdf' : (s.fmt==='xlsx' ? 'xlsx' : 'docx');
+  if(fmt!=='pdf' && typeof JSZip==='undefined'){ toast("Word export couldn't load. Check your connection and reopen the app."); return; }
   generating = true;
   const id = s.id, prepared = (s.prepared||'').trim(), withPhotos = !!s.photos;
   prefs.prepared = prepared; sset('prefs:main', JSON.stringify(prefs));
-  state.sheet = {type:'working',title:fmt==='pdf'?'Building your PDF':'Building your report'}; renderSheet();
+  state.sheet = {type:'working',title:fmt==='pdf'?'Building your PDF':fmt==='xlsx'?'Building your Excel file':'Building your report'}; renderSheet();
   try{
-    const data = s.ri ? await prepareReinsp(id,s.ri,prepared,withPhotos) : await prepareReport(id,prepared,withPhotos);
-    let blob, ext;
+    let data, blob, ext;
+    if(fmt==='xlsx'){
+      const x = xlsxBuild(id,s.ri||null); data = x.nameData;
+      blob = await x.zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'}); ext = 'xlsx';
+    } else {
+    data = s.ri ? await prepareReinsp(id,s.ri,prepared,withPhotos) : await prepareReport(id,prepared,withPhotos);
     if(fmt==='pdf'){
       const PL = await loadPdfLib();
       blob = new Blob([await makePdf(PL,data)],{type:'application/pdf'}); ext = 'pdf';
@@ -1078,10 +1107,11 @@ async function runReport(){
       const zip = makeDocx(JSZip,data);
       blob = await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'}); ext = 'docx';
     }
+    }
     const url = URL.createObjectURL(blob);
     const fname = reportFileName(data,ext);
     state.sheet = {type:'ready',url:url,blob:blob,name:fname,
-      title:fmt==='pdf'?'PDF report ready':'Report ready',btnLabel:fmt==='pdf'?'Download PDF file':'Download Word file'}; renderSheet();
+      title:fmt==='pdf'?'PDF report ready':fmt==='xlsx'?'Excel file ready':'Report ready',btnLabel:fmt==='pdf'?'Download PDF file':fmt==='xlsx'?'Download Excel file':'Download Word file'}; renderSheet();
   }catch(err){
     console.error(err); state.sheet = null; renderSheet();
     toast(err && err.message==='pdflib' ? "The PDF tool couldn't load. Check your signal and try again." : "Couldn't create the report. Try again.");
@@ -1393,6 +1423,14 @@ function parseBackup(o){
         })};
       });
       const bOut = {id:b.id,ref:Number(b.ref)||1,name:str(b.name),units:bUnits};
+      if(b.design && typeof b.design==='object' && Array.isArray(b.design.findings)){
+        const d0 = b.design, sx = (v,n) => str(v).slice(0,n);
+        bOut.design = {id:'design',modified:Number(d0.modified)||Date.now(),scanned:Number(d0.scanned)||Date.now(),summary:sx(d0.summary,1500),
+          docs:(Array.isArray(d0.docs)?d0.docs:[]).slice(0,12).map(x=>({name:sx(x&&x.name,160),kind:sx(x&&x.kind,40),pages:Number(x&&x.pages)||0})),
+          notAssessed:(Array.isArray(d0.notAssessed)?d0.notAssessed:[]).slice(0,12).map(x=>sx(x,300)),
+          findings:d0.findings.slice(0,40).filter(f=>f && idOk(f.id)).map(f=>({id:f.id,title:sx(f.title,200),discipline:sx(f.discipline,40),rating:/^(red|yellow|green)$/.test(f.rating)?f.rating:'yellow',description:sx(f.description,2500),
+            evidence:(Array.isArray(f.evidence)?f.evidence:[]).slice(0,6).map(e=>({doc:sx(e&&e.doc,160),page:sx(e&&e.page,40),note:sx(e&&e.note,300)})),nccTopic:sx(f.nccTopic,200),recommendation:sx(f.recommendation,1200),confidence:/^(high|medium|low)$/.test(f.confidence)?f.confidence:'',include:f.include!==false}))};
+      }
       if(Array.isArray(b.reinsp)){
         const rs = b.reinsp.filter(r=>r && idOk(r.id) && Array.isArray(r.items)).map(r=>({id:r.id,n:Number(r.n)||1,date:/^\d{4}-\d{2}-\d{2}$/.test(r.date||'')?r.date:'',created:Number(r.created)||Date.now(),modified:Number(r.modified)||Date.now(),
           items:r.items.filter(it=>it && idOk(it.id)).map(it=>{
@@ -1630,6 +1668,12 @@ function mergeBuilding(b,l,r){
   const out = {id:l.id,ref:pick3(bb.ref,l.ref,r.ref),name:pick3(bb.name,l.name,r.name),units:mergeList(bb.units,l.units||[],r.units||[],mergeUnit)};
   const ri = mergeList(bb.reinsp||[],l.reinsp||[],r.reinsp||[],mergeIncident);
   if(ri.length) out.reinsp = ri;
+  const L = l.design, R = r.design, B = bb.design;
+  let dn = null;
+  if(L && R) dn = mergeIncident(B||null,L,R);
+  else if(L){ dn = (B && same(L,B)) ? null : L; }
+  else if(R){ dn = (B && same(R,B)) ? null : R; }
+  if(dn) out.design = dn;
   return out;
 }
 function mergeProject(b,l,r){
@@ -1782,7 +1826,7 @@ async function syncNow(manual){
     await saveCloudState(); await saveNow();
     if(state.sel.p){ const cur = jobs.projects.find(p=>p.id===state.sel.p); if(cur){ proj = cur; fixSel(); } else if(state.view!=='projects'){ proj = {buildings:[]}; state.sel = {p:null,b:null,u:null}; state.edit = null; state.view = 'projects'; } }
     cloudMsg = conflicts ? 'Synced, but '+conflicts+' project'+(conflicts===1?'':'s')+' changed elsewhere. Syncing again shortly.' : (photoFails ? 'Synced. '+photoFails+' photo'+(photoFails===1?'':'s')+' still to transfer.' : '');
-    if(state.view!=='incident' && state.view!=='reinsp' && !state.sheet) render();
+    if(state.view!=='incident' && state.view!=='reinsp' && state.view!=='design' && !state.sheet) render();
     else setCloudMsg(cloudMsg);
     if(conflicts || photoFails){ clearTimeout(resyncTimer); resyncTimer = setTimeout(()=>syncNow(false), 15000); }
     if(manual && !conflicts && !photoFails) toast('Synced.');
@@ -2025,7 +2069,7 @@ function renderReinsp(){
     +'<h1 style="margin-bottom:6px">Re-inspection '+r.n+'</h1><p class="sub" style="margin-bottom:12px">'+esc(proj.address||'')+' · '+esc(b.name)+'</p>'
     +'<label class="field"><span>Re-inspection date</span><input type="date" data-rdate value="'+esc(r.date)+'"></label>'
     +'<p class="sub" id="risum" style="margin-bottom:12px">'+esc(riSummaryText(r))+'</p>'
-    +'<div class="repbtns" style="margin-bottom:16px"><button class="btn ghost" data-action="ri-report" data-fmt="docx">Word report</button><button class="btn ghost" data-action="ri-report" data-fmt="pdf">PDF report</button></div>'
+    +'<div class="repbtns" style="margin-bottom:16px"><button class="btn ghost" data-action="ri-report" data-fmt="docx">Word report</button><button class="btn ghost" data-action="ri-report" data-fmt="pdf">PDF report</button><button class="btn ghost" data-action="ri-report" data-fmt="xlsx">Excel</button></div>'
     +groups.map(g=>'<h3 style="margin:18px 0 10px">'+esc(g.name||'Unit')+'</h3>'+g.items.map(riItemHtml).join('')).join('')
     +'<button class="btn block" style="margin:6px 0 12px" data-action="ri-add-new">Add a new defect found</button>'
     +'<button class="btn danger block" style="margin:0 0 24px" data-action="ri-del-round">Delete this re-inspection</button>'
@@ -2056,9 +2100,303 @@ async function prepareReinsp(bid,rid,prepared,withPhotos){
   }
   const c = riCounts(r);
   const base = await prepareReport(bid,prepared,false);
-  base.units = units;
+  base.units = units; base.design = null;
   base.re = {n:r.n,dateText:fmtD(r.date),counts:c,summary:riSummaryText(r)};
   return base;
+}
+
+/* ---------- Excel export (defect schedule with re-inspection close-out) ---------- */
+function xlsxBuild(bid,rid){
+  const b = proj.buildings.find(x=>x.id===bid);
+  const rounds = (b.reinsp||[]).slice().sort((p,q)=>p.n-q.n);
+  const round = rid ? rounds.find(r=>r.id===rid) : (rounds.length ? rounds[rounds.length-1] : null);
+  const RT = {red:'Red',yellow:'Yellow',green:'Green'};
+  const rows = []; const used = new Set();
+  const incById = new Map(); b.units.forEach(u=>u.incidents.forEach(i=>incById.set(i.id,{inc:i,unit:u.name})));
+  function mk(unit,inc,it){
+    const st = it ? (it.added ? 'New defect' : (RI[it.status] ? RI[it.status].t : '')) : '';
+    return {unit:unit,area:(inc?inc.area:it.area)||'',rating:(inc?inc.rating:it.rating)||'',desc:(inc?inc.description:it.desc)||'',causes:inc?inc.causes||'':'',breach:inc?inc.breach||'':'',scope:inc?inc.scope||'':'',
+      status:st,date:it?fmtD(round.date):'',comment:it?(it.comment||''):'',closed:it ? (it.status==='rectified' ? 'Yes' : 'No') : ''};
+  }
+  if(round){
+    round.items.forEach(it=>{ const f = it.ref ? incById.get(it.ref) : null; if(f) used.add(f.inc.id); rows.push(mk(f?f.unit:(it.unit||'Other'),f?f.inc:null,it)); });
+    b.units.forEach(u=>u.incidents.forEach(i=>{ if(!used.has(i.id)) rows.push(mk(u.name,i,null)); }));
+  } else b.units.forEach(u=>u.incidents.forEach(i=>rows.push(mk(u.name,i,null))));
+  const col = n => { let s = ''; n++; while(n>0){ const m = (n-1)%26; s = String.fromCharCode(65+m)+s; n = Math.floor((n-1)/26); } return s; };
+  const cs = (r,c,v,st) => {
+    const ref = col(c)+r;
+    if(v===null || v===undefined || v==='') return '<c r="'+ref+'" s="'+st+'"/>';
+    if(typeof v==='number') return '<c r="'+ref+'" s="'+st+'"><v>'+v+'</v></c>';
+    if(v && v.f) return '<c r="'+ref+'" s="'+st+'"><f>'+xmlEsc(v.f)+'</f></c>';
+    return '<c r="'+ref+'" s="'+st+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(v)+'</t></is></c>';
+  };
+  const rowXml = (r,cells,ht) => '<row r="'+r+'"'+(ht?' ht="'+ht+'" customHeight="1"':'')+'>'+cells.join('')+'</row>';
+  const ratingSt = k => k==='red'?4:k==='yellow'?5:k==='green'?6:3;
+  const colsXml = w => '<cols>'+w.map((x,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+x+'" customWidth="1"/>').join('')+'</cols>';
+  const sheet = (inner,opts) => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'
+    +'<sheetViews><sheetView workbookViewId="0"'+(opts&&opts.first?' tabSelected="1"':'')+'>'+(opts&&opts.freeze?'<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>':'')+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+inner
+    +'<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>';
+
+  // --- Defect schedule
+  const H = ['No.','Building','Unit / location','Area','Rating','Description','Causes','Breach','Scope of rectification','Re-inspection status','Re-inspection date','Re-inspection comment','Closed out?','Close-out date','Closed out by','Close-out notes'];
+  const W = [6,16,18,18,10,44,30,30,36,20,16,36,12,14,18,30];
+  let sd = '<sheetData>'+rowXml(1,H.map((h,i)=>cs(1,i,h,i>=9?7:1)),32);
+  rows.forEach((r,k)=>{
+    const n = k+2;
+    sd += rowXml(n,[cs(n,0,k+1,3),cs(n,1,b.name,2),cs(n,2,r.unit,2),cs(n,3,r.area,2),cs(n,4,RT[r.rating]||'',ratingSt(r.rating)),cs(n,5,r.desc,2),cs(n,6,r.causes,2),cs(n,7,r.breach,2),cs(n,8,r.scope,2),
+      cs(n,9,r.status,10),cs(n,10,r.date,10),cs(n,11,r.comment,10),cs(n,12,r.closed,11),cs(n,13,'',10),cs(n,14,'',10),cs(n,15,'',10)]);
+  });
+  sd += '</sheetData>';
+  const last = Math.max(rows.length+1,2), vmax = Math.max(last+200,300);
+  const sdSheet = sheet(colsXml(W)+sd+'<autoFilter ref="A1:P'+last+'"/>'
+    +'<dataValidations count="2"><dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="J2:J'+vmax+'"><formula1>"Rectified,Partially rectified,Not rectified,New defect"</formula1></dataValidation>'
+    +'<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="M2:M'+vmax+'"><formula1>"Yes,No"</formula1></dataValidation></dataValidations>',{freeze:true});
+
+  // --- Summary
+  const P = proj, SN = "'Defect schedule'!";
+  const kvs = [['Property',P.address||''],['Building',b.name],['Original inspection',fmtD(P.date)],['Building class',({'1':'Class 1','2':'Class 2','other':'Other'})[P.cls]||''],['NCC edition',({'2022':'NCC 2022','2019':'NCC 2019','2016':'NCC 2016','older':'BCA 2015 or earlier'})[P.ncc]||''],['Prepared by',prefs.prepared||''],['Exported',fmtD(isoToday())]];
+  if(round) kvs.push(['Status taken from','Re-inspection '+round.n+' ('+fmtD(round.date)+')']);
+  let sm = '<sheetData>'+rowXml(1,[cs(1,0,'Defect schedule and close-out register',8)],24); let r = 3;
+  kvs.forEach(a=>{ sm += rowXml(r,[cs(r,0,a[0],9),cs(r,1,a[1],2)]); r++; });
+  r++; sm += rowXml(r,[cs(r,0,'Totals',1),cs(r,1,'Count',1)]); r++;
+  const tot = r; sm += rowXml(r,[cs(r,0,'Total defects',9),cs(r,1,{f:'COUNT('+SN+'A:A)'},3)]); r++;
+  [['Red'],['Yellow'],['Green']].forEach(a=>{ sm += rowXml(r,[cs(r,0,a[0],a[0]==='Red'?4:a[0]==='Yellow'?5:6),cs(r,1,{f:'COUNTIF('+SN+'E:E,"'+a[0]+'")'},3)]); r++; });
+  r++; sm += rowXml(r,[cs(r,0,'Re-inspection close-out',7),cs(r,1,'Count',7)]); r++;
+  const stStart = r;
+  ['Rectified','Partially rectified','Not rectified','New defect'].forEach(t=>{ sm += rowXml(r,[cs(r,0,t,9),cs(r,1,{f:'COUNTIF('+SN+'J:J,"'+t+'")'},3)]); r++; });
+  sm += rowXml(r,[cs(r,0,'Not yet re-inspected',9),cs(r,1,{f:'B'+tot+'-SUM(B'+stStart+':B'+(stStart+2)+')'},3)]); r++;
+  const closedRow = r; sm += rowXml(r,[cs(r,0,'Closed out',9),cs(r,1,{f:'COUNTIF('+SN+'M:M,"Yes")'},3)]); r++;
+  sm += rowXml(r,[cs(r,0,'Still open',9),cs(r,1,{f:'B'+tot+'-B'+closedRow},3)]); r++;
+  sm += '</sheetData>';
+  const smSheet = sheet(colsXml([30,46])+sm,{first:true});
+
+  // --- Re-inspection history
+  const sheets = [['Summary',smSheet],['Defect schedule',sdSheet]];
+  if(rounds.length){
+    const HH = ['Re-inspection','Date','Unit / location','Area','Original rating','Status','Comment'];
+    let hs = '<sheetData>'+rowXml(1,HH.map((h,i)=>cs(1,i,h,1)),28); let hr = 2;
+    rounds.forEach(rd=>rd.items.forEach(it=>{
+      hs += rowXml(hr,[cs(hr,0,'Re-inspection '+rd.n,2),cs(hr,1,fmtD(rd.date),2),cs(hr,2,it.unit||'',2),cs(hr,3,it.area||'',2),cs(hr,4,RT[it.rating]||'',ratingSt(it.rating)),cs(hr,5,it.added?'New defect':(RI[it.status]?RI[it.status].t:'Not assessed'),2),cs(hr,6,it.comment||'',2)]); hr++;
+    }));
+    hs += '</sheetData>';
+    sheets.push(['Re-inspections',sheet(colsXml([16,14,20,20,14,20,50])+hs+'<autoFilter ref="A1:G'+Math.max(hr-1,2)+'"/>',{freeze:true})]);
+  }
+  if(b.design && (b.design.findings||[]).length){
+    const HD = ['No.','Discipline','Rating','Finding','Description','Evidence','Check against','Recommendation','Confidence','Action taken','Closed out?'];
+    let ds = '<sheetData>'+rowXml(1,HD.map((h,i)=>cs(1,i,h,i>=9?7:1)),28); let dr = 2;
+    b.design.findings.filter(f=>f.include!==false).forEach((f,k)=>{
+      ds += rowXml(dr,[cs(dr,0,k+1,3),cs(dr,1,f.discipline||'',2),cs(dr,2,RT[f.rating]||'',ratingSt(f.rating)),cs(dr,3,f.title||'',2),cs(dr,4,f.description||'',2),cs(dr,5,drEvidenceText(f),2),cs(dr,6,f.nccTopic||'',2),cs(dr,7,f.recommendation||'',2),cs(dr,8,f.confidence||'',3),cs(dr,9,'',10),cs(dr,10,'',10)]); dr++;
+    });
+    ds += '</sheetData>';
+    sheets.push(['Design review',sheet(colsXml([6,16,10,30,50,36,26,40,12,26,12])+ds+'<autoFilter ref="A1:K'+Math.max(dr-1,2)+'"/>',{freeze:true})]);
+  }
+
+  // --- Package
+  const fill = c => '<fill><patternFill patternType="solid"><fgColor rgb="FF'+c+'"/><bgColor indexed="64"/></patternFill></fill>';
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    +'<fonts count="5"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="14"/><color rgb="FF1B2A34"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FF1B2A34"/><name val="Arial"/></font></fonts>'
+    +'<fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+fill('2F7A80')+fill('C93A33')+fill('F2C230')+fill('2E9E5B')+fill('9A6B14')+fill('FFF6DD')+'</fills>'
+    +'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFC6D0D5"/></left><right style="thin"><color rgb="FFC6D0D5"/></right><top style="thin"><color rgb="FFC6D0D5"/></top><bottom style="thin"><color rgb="FFC6D0D5"/></bottom><diagonal/></border></borders>'
+    +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+    +'<cellXfs count="12">'
+    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+    +'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>'
+    +'<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>'
+    +'<xf numFmtId="0" fontId="1" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>'
+    +'<xf numFmtId="0" fontId="1" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+    +'<xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>'
+    +'<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>'
+    +'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+    +sheets.map((x,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'</Types>');
+  zip.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+  zip.file('xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>'
+    +sheets.map((x,i)=>'<sheet name="'+xmlEsc(x[0])+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+  zip.file('xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    +sheets.map((x,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')
+    +'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+  zip.file('xl/styles.xml',styles);
+  sheets.forEach((x,i)=>zip.file('xl/worksheets/sheet'+(i+1)+'.xml',x[1]));
+  return {zip:zip,nameData:{project:{address:P.address||''},building:{name:b.name},re:round?{n:round.n}:null}};
+}
+
+/* ---------- Design review (scan drawings and reports) ---------- */
+const DR_KINDS = ['Architectural','Structural','Services','BCA report','Fire engineering report','Other'];
+const DR_SYSTEM = [
+  'You assist an Australian building inspector who reviews design documents for possible design faults.',
+  'You are given design documents for one building: architectural, structural and services drawings, a BCA or NCC report, and a fire engineering report. Some may be missing.',
+  'Reply with ONLY a JSON object with these keys:',
+  '  summary: string (2 to 4 sentences)',
+  '  findings: array of objects with keys: title (short), discipline (one of Architectural, Structural, Services, Fire engineering, BCA, Cross-document), rating (red, yellow or green), description, evidence (array of objects with doc, page and note), nccTopic (a topic or part name only, such as "Egress and travel distances", or an empty string), recommendation, confidence (high, medium or low)',
+  '  notAssessed: array of strings (what you could not assess, such as illegible sheets, missing documents or unknown scale)',
+  'Rules:',
+  '- Look for inconsistencies between documents (for example a fire engineering assumption that does not match the architectural plans, a BCA report item with no matching detail on the drawings, structure that does not match the architectural layout, services penetrating fire-rated elements), for missing or unclear information, and for anything that appears to conflict with the stated building class and NCC edition.',
+  '- Every finding must cite the document name and page number in evidence. Do not report anything you cannot point to.',
+  '- Do NOT quote NCC or Australian Standard clause numbers. Name the topic only.',
+  '- Do not invent dimensions. Only state measurements that are written on the documents. Measurements scaled off drawings are unreliable: say so and set confidence to low.',
+  '- Phrase every finding as a possible issue to verify, never as a confirmed non-compliance.',
+  '- rating: red = potentially serious life-safety, structural or regulatory issue; yellow = should be resolved or clarified; green = minor or housekeeping.',
+  '- Report at most 25 findings, most serious first. If you find no issues, return an empty findings array and say what you checked in the summary.'
+].join('\n');
+const drDocs = () => (state.dr && state.dr.files) || [];
+function drEvidenceText(f){ return (f.evidence||[]).map(e=>(e.doc||'')+(e.page?' p.'+e.page:'')+(e.note?' - '+e.note:'')).join('; '); }
+function drGuessKind(name){
+  const n = name.toLowerCase();
+  if(/fire.?eng|\bfer\b|\bfse\b|fire safety eng/.test(n)) return 'Fire engineering report';
+  if(/bca|ncc|code.?comp|compliance/.test(n)) return 'BCA report';
+  if(/struct|engineer/.test(n)) return 'Structural';
+  if(/hydraul|mech|elec|service|plumb|fire.?serv|hvac|stormwater|drain/.test(n)) return 'Services';
+  if(/arch|plan|elev|section|floor/.test(n)) return 'Architectural';
+  return 'Architectural';
+}
+function drParseRange(txt,max){
+  const set = new Set();
+  String(txt||'').split(',').forEach(part=>{
+    const m = /^\s*(\d+)\s*(?:-\s*(\d+))?\s*$/.exec(part); if(!m) return;
+    const a = +m[1], z = m[2] ? +m[2] : a;
+    for(let p=Math.max(1,Math.min(a,z)); p<=Math.min(max||9999,Math.max(a,z)); p++) set.add(p-1);
+  });
+  return Array.from(set).sort((p,q)=>p-q);
+}
+function drB64(bytes){ let s = ''; for(let i=0;i<bytes.length;i+=0x8000) s += String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(s); }
+async function drAddFiles(files){
+  const dr = state.dr; if(!dr) return;
+  for(const f of files){
+    if(dr.files.length>=12){ toast('Up to 12 documents per scan.'); break; }
+    const name = f.name || 'Document';
+    const media = /\.pdf$/i.test(name) ? 'application/pdf' : (f.type||'');
+    if(!/^(application\/pdf|image\/(jpeg|png|webp|gif))$/.test(media)){ toast(name+' is not a PDF or image.'); continue; }
+    try{
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      let pages = media==='application/pdf' ? 0 : 1;
+      if(media==='application/pdf'){ try{ const PL = await loadPdfLib(); pages = (await PL.PDFDocument.load(bytes,{ignoreEncryption:true,updateMetadata:false})).getPageCount(); }catch(e){ pages = 0; } }
+      dr.files.push({id:uid(),name:name,kind:drGuessKind(name),media:media,b64:drB64(bytes),size:bytes.length,pages:pages,range:''});
+    }catch(e){ toast("That file couldn't be read."); }
+  }
+  if(state.view==='design') render();
+}
+function drPagesUsed(f){ if(f.media!=='application/pdf') return 1; if(!f.range.trim()) return f.pages||0; return drParseRange(f.range,f.pages||9999).length; }
+function drTotals(){ let pages = 0, bytes = 0; drDocs().forEach(f=>{ pages += drPagesUsed(f); bytes += f.b64.length; }); return {pages:pages,bytes:bytes}; }
+function designCard(b){
+  const d = b.design, n = d ? (d.findings||[]).length : 0;
+  const inner = d ? '<p class="sub" style="margin:0 0 12px">'+n+' finding'+(n===1?'':'s')+' from the scan on '+esc(fmtD(new Date(d.scanned).toISOString().slice(0,10)))+'. Ticked findings appear in the reports.</p><button class="btn ghost block" style="margin:0 0 8px" data-action="open-design">Open design review</button>'
+    : '<p class="empty">Scan the architectural, structural and services drawings, the BCA report and the fire engineering report for possible design faults.</p>';
+  return card('b','Design review','incident',d?'Rescan':'Scan','open-design',inner);
+}
+function renderDesign(){
+  const b = curB(); const dr = state.dr || (state.dr = {files:[]});
+  if(!b) return '<header class="topbar"><button class="back" data-action="dr-back">'+icon('back')+'<span>Back</span></button></header><main class="pad"><p class="empty">Not available.</p></main>';
+  const t = drTotals(), des = b.design;
+  let h = '<header class="topbar"><button class="back" data-action="dr-back">'+icon('back')+'<span>'+esc(b.name)+'</span></button></header><main class="pad"><h1 style="margin-bottom:6px">Design review</h1>'
+    +'<p class="sub" style="margin-bottom:14px">Add the drawings and reports for this building. They are sent to the AI for the scan and are not stored in the app. Findings are possible issues to verify, not confirmed faults.</p>';
+  if(!aiEnabled()) h += '<p class="sub" style="color:var(--hazard);margin-bottom:12px">The AI assistant is not set up. Add it in Settings first.</p>';
+  h += dr.files.map(f=>'<div class="ricard"><div class="rihead"><b style="word-break:break-all">'+esc(f.name)+'</b></div><p class="prev">'+(f.media==='application/pdf'?(f.pages?f.pages+' page'+(f.pages===1?'':'s'):'Pages unknown'):'Image')+' · '+(f.size/1048576).toFixed(1)+' MB</p>'
+    +'<label class="field" style="margin:0 0 8px"><span>Document type</span><select data-dr-kind="'+f.id+'">'+DR_KINDS.map(k=>'<option'+(k===f.kind?' selected':'')+'>'+k+'</option>').join('')+'</select></label>'
+    +(f.media==='application/pdf'?'<label class="field" style="margin:0 0 8px"><span>Only scan these pages (optional, for example 1-12, 20)</span><input type="text" data-dr-range="'+f.id+'" value="'+esc(f.range)+'" inputmode="numeric" autocomplete="off"></label>':'')
+    +'<button class="btn danger" data-action="dr-remove" data-id="'+f.id+'">Remove</button></div>').join('');
+  h += '<button class="btn ghost block" style="margin:0 0 12px" data-action="dr-pick">Add PDFs or images</button>';
+  if(dr.files.length){
+    const over = t.pages>100 || t.bytes>30000000;
+    h += '<p class="sub" style="margin-bottom:12px;'+(over?'color:var(--hazard)':'')+'">'+t.pages+' page'+(t.pages===1?'':'s')+' selected · '+(t.bytes/1048576).toFixed(1)+' MB'+(over?'. This is over the limit of 100 pages or about 22 MB per scan. Choose page ranges or scan one discipline at a time.':'. Large sets take a few minutes and use more of your AI credit. Scanning one discipline at a time is cheaper.')+'</p>'
+      +'<button class="btn block" style="margin:0 0 20px"'+(over||!aiEnabled()?' disabled':'')+' data-action="dr-scan">Scan for design faults</button>';
+  }
+  if(des){
+    const fl = des.findings||[];
+    h += '<h2 style="margin:8px 0 8px">Results</h2><p class="sub" style="margin-bottom:6px">Scanned '+esc(fmtD(new Date(des.scanned).toISOString().slice(0,10)))+' · '+(des.docs||[]).map(d=>esc(d.name)).join(', ')+'</p>'
+      +(des.summary?'<p style="margin:0 0 12px">'+esc(des.summary)+'</p>':'');
+    h += fl.map(f=>'<div class="ricard"><div class="rihead"><b>'+esc(f.title)+'</b>'+(RATING[f.rating]?'<span class="rpill '+f.rating+'">'+RATING[f.rating].label+'</span>':'')+'</div>'
+      +'<p class="prev">'+esc(f.discipline||'')+(f.confidence?' · confidence '+esc(f.confidence):'')+'</p>'
+      +'<p style="margin:0 0 8px">'+esc(f.description)+'</p>'
+      +(f.evidence&&f.evidence.length?'<p class="prev"><b>Evidence:</b> '+esc(drEvidenceText(f))+'</p>':'')
+      +(f.nccTopic?'<p class="prev"><b>Check against:</b> '+esc(f.nccTopic)+'</p>':'')
+      +(f.recommendation?'<p class="prev"><b>Recommendation:</b> '+esc(f.recommendation)+'</p>':'')
+      +'<label class="check"><input type="checkbox" data-dr-inc="'+f.id+'"'+(f.include!==false?' checked':'')+'><span>Include in reports</span></label>'
+      +'<div class="row2"><button class="btn danger" data-action="dr-del" data-id="'+f.id+'">Delete finding</button></div></div>').join('');
+    if(!fl.length) h += '<p class="empty">No issues were reported.</p>';
+    if((des.notAssessed||[]).length) h += '<p class="sub"><b>Not assessed:</b> '+des.notAssessed.map(esc).join('; ')+'</p>';
+    h += '<button class="btn danger block" style="margin:12px 0 24px" data-action="dr-clear">Clear all results</button>';
+  }
+  return h+'<input type="file" id="drInput" class="vh" accept="application/pdf,.pdf,image/*" multiple tabindex="-1"></main>';
+}
+function drErrorText(err){
+  if(err.message==='bigsel') return 'Too many pages or too large. Choose page ranges or scan fewer documents.';
+  const base = aiErrorText(err);
+  return err.detail ? base+' ('+String(err.detail).slice(0,160)+')' : base;
+}
+async function callDesign(content, signal){
+  const body = {model:AI_MODEL,max_tokens:16000,stream:true,thinking:{type:'between_tools'},output_config:{effort:'medium'},system:DR_SYSTEM,messages:[{role:'user',content:content}]};
+  const viaWorker = !!prefs.aiUrl;
+  const url = viaWorker ? prefs.aiUrl : (prefs.aiApiBase||AI_API);
+  const headers = viaWorker ? {'Content-Type':'application/json','X-Access-Code':prefs.aiCode||'','X-Mode':'design'}
+    : {'content-type':'application/json','x-api-key':prefs.aiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+  const res = await fetch(url,{method:'POST',headers:headers,body:JSON.stringify(body),signal:signal});
+  if(res.status===401) throw new Error(viaWorker?'code':'key');
+  if(!res.ok){ const err = new Error('api'); err.status = res.status; try{ const j = JSON.parse(await res.text()); err.detail = (j.error && (j.error.message||j.error)) || ''; }catch(e){} throw err; }
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '', text = '', evErr = '';
+  for(;;){
+    const r = await reader.read(); if(r.done) break;
+    buf += dec.decode(r.value,{stream:true}); let i;
+    while((i = buf.indexOf('\n'))>=0){
+      const line = buf.slice(0,i).trim(); buf = buf.slice(i+1);
+      if(line.indexOf('data:')!==0) continue;
+      const j = line.slice(5).trim(); if(!j || j==='[DONE]') continue;
+      try{ const ev = JSON.parse(j);
+        if(ev.type==='content_block_delta' && ev.delta && ev.delta.type==='text_delta') text += ev.delta.text;
+        else if(ev.type==='error') evErr = (ev.error && ev.error.message) || 'error';
+      }catch(e){}
+    }
+  }
+  if(evErr && !text){ const err = new Error('api'); err.status = 'stream'; err.detail = evErr; throw err; }
+  const a = text.indexOf('{'), z = text.lastIndexOf('}');
+  if(a<0 || z<=a) throw new Error('bad');
+  try{ return JSON.parse(text.slice(a,z+1)); }catch(e){ throw new Error('bad'); }
+}
+function drNormalize(r){
+  const s = (v,n) => String(v==null?'':v).slice(0,n||2000);
+  const findings = (Array.isArray(r.findings)?r.findings:[]).slice(0,40).map(f=>({
+    id:uid(),title:s(f.title,200),discipline:s(f.discipline,40),rating:/^(red|yellow|green)$/.test(f.rating)?f.rating:'yellow',description:s(f.description,2500),
+    evidence:(Array.isArray(f.evidence)?f.evidence:[]).slice(0,6).map(e=>({doc:s(e&&e.doc,160),page:s(e&&e.page,40),note:s(e&&e.note,300)})),
+    nccTopic:s(f.nccTopic,200),recommendation:s(f.recommendation,1200),confidence:/^(high|medium|low)$/.test(f.confidence)?f.confidence:'',include:true
+  })).filter(f=>f.title||f.description);
+  return {summary:s(r.summary,1500),findings:findings,notAssessed:(Array.isArray(r.notAssessed)?r.notAssessed:[]).slice(0,12).map(x=>s(x,300))};
+}
+async function drScan(){
+  const dr = state.dr, b = curB(); if(!dr || !b) return;
+  if(!dr.files.length){ toast('Add at least one document.'); return; }
+  if(!aiEnabled()){ toast('Set up the AI assistant in Settings first.'); return; }
+  ask('Scan these documents?','The documents are sent to the AI service for this scan and are not stored in the app. The scan uses your AI credit.','Scan',async()=>{
+    state.sheet = {type:'working',title:'Scanning the documents',body:'This can take a few minutes. Keep the app open and your screen on.'}; renderSheet();
+    try{
+      let PL = null; const content = []; let pages = 0, bytes = 0; const used = [];
+      for(let i=0;i<dr.files.length;i++){
+        const f = dr.files[i]; let data = f.b64, np = f.pages || 1;
+        if(f.media==='application/pdf' && f.range.trim()){
+          PL = PL || await loadPdfLib();
+          const src = await PL.PDFDocument.load(Uint8Array.from(atob(f.b64),c=>c.charCodeAt(0)),{ignoreEncryption:true,updateMetadata:false});
+          const idx = drParseRange(f.range,src.getPageCount()); if(!idx.length) throw new Error('bigsel');
+          const out = await PL.PDFDocument.create(); (await out.copyPages(src,idx)).forEach(p=>out.addPage(p));
+          data = drB64(await out.save()); np = idx.length;
+        }
+        pages += f.media==='application/pdf' ? np : 1; bytes += data.length;
+        content.push({type:'text',text:'Document '+(i+1)+': '+f.name+' (type: '+f.kind+')'});
+        content.push(f.media==='application/pdf' ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:data}} : {type:'image',source:{type:'base64',media_type:f.media,data:data}});
+        used.push({name:f.name,kind:f.kind,pages:np});
+      }
+      if(pages>100 || bytes>30000000) throw new Error('bigsel');
+      content.push({type:'text',text:'Building details (JSON):\n'+JSON.stringify({building:b.name,address:proj.address||'',buildingClass:({'1':'Class 1','2':'Class 2','other':'Other'})[proj.cls]||'not recorded',nccEdition:({'2022':'NCC 2022','2019':'NCC 2019','2016':'NCC 2016','older':'BCA 2015 or earlier'})[proj.ncc]||'not recorded'},null,2)+'\n\nReview the documents above for possible design faults and inconsistencies. Return only the JSON object.'});
+      const result = drNormalize(await callDesign(content));
+      b.design = {id:'design',modified:Date.now(),scanned:Date.now(),summary:result.summary,docs:used,findings:result.findings,notAssessed:result.notAssessed};
+      dr.files = []; persist(); state.sheet = null; render(true); toast('Scan finished');
+    }catch(err){
+      console.error(err); state.sheet = null; renderSheet(); render(); toast(drErrorText(err));
+    }
+  });
 }
 
 /* ---------- events ---------- */
@@ -2171,6 +2509,13 @@ document.addEventListener('click', ev=>{
         u.incidents = u.incidents.filter(i=>i.id!==e.id);
         state.edit = null; state.view = 'main'; persist(); render(true); toast('Incident deleted');
       }); break; }
+    case 'open-design': state.dr = {files:[]}; state.view = 'design'; render(true); break;
+    case 'dr-back': state.view = 'main'; render(true); break;
+    case 'dr-pick': { const i = document.getElementById('drInput'); if(i) i.click(); break; }
+    case 'dr-remove': if(state.dr){ state.dr.files = state.dr.files.filter(f=>f.id!==t.dataset.id); render(); } break;
+    case 'dr-scan': drScan(); break;
+    case 'dr-del': { const b = curB(); if(b && b.design){ b.design.findings = b.design.findings.filter(f=>f.id!==t.dataset.id); b.design.modified = Date.now(); persist(); render(); } break; }
+    case 'dr-clear': { const b = curB(); ask('Clear the design review?','All findings from the scan will be removed from this building.','Clear',()=>{ delete b.design; persist(); render(); }); break; }
     case 'start-reinsp': startReinsp(); break;
     case 'open-reinsp': state.ri = t.dataset.id; state.view = 'reinsp'; render(true); break;
     case 'ri-back': dictStop(); state.view = 'main'; render(true); break;
@@ -2196,6 +2541,7 @@ document.addEventListener('click', ev=>{
 });
 document.addEventListener('input', ev=>{
   const t0 = ev.target;
+  if(t0.dataset && t0.dataset.drRange && state.dr){ const f = state.dr.files.find(x=>x.id===t0.dataset.drRange); if(f){ f.range = t0.value; } return; }
   if(t0.dataset && t0.dataset.rc){ const r = curRound(), it = r && r.items.find(x=>x.id===t0.dataset.rc); if(it){ it.comment = t0.value; r.modified = Date.now(); persist(); } return; }
   if(t0.dataset && t0.dataset.rdate!==undefined){ const r = curRound(); if(r && /^\d{4}-\d{2}-\d{2}$/.test(t0.value)){ r.date = t0.value; r.modified = Date.now(); persist(); } return; }
   if(t0.dataset && t0.dataset.n && state.sheet){ state.sheet[t0.dataset.n] = t0.value; return; }
@@ -2219,6 +2565,9 @@ document.addEventListener('change', ev=>{
   if(t.dataset.r==='photos' && state.sheet) state.sheet.photos = t.checked;
   if(t.dataset.ai && state.sheet && state.sheet.type==='ai-review') state.sheet.use[t.dataset.ai] = t.checked;
   if(t.id==='galleryInput' || t.id==='cameraInput'){ const files = Array.from(t.files); t.value = ''; addPhotos(files, t.id==='cameraInput'); }
+  if(t.id==='drInput'){ const files = Array.from(t.files); t.value = ''; drAddFiles(files); }
+  if(t.dataset && t.dataset.drKind && state.dr){ const f = state.dr.files.find(x=>x.id===t.dataset.drKind); if(f) f.kind = t.value; }
+  if(t.dataset && t.dataset.drInc){ const b = curB(); const f = b && b.design && b.design.findings.find(x=>x.id===t.dataset.drInc); if(f){ f.include = t.checked; b.design.modified = Date.now(); persist(); } }
   if(t.id==='riGal' || t.id==='riCam'){ const files = Array.from(t.files); t.value = ''; addRiPhotos(files); }
   if(t.id==='restoreInput'){ const f = t.files && t.files[0]; t.value = ''; if(f) readBackup(f); }
 });
